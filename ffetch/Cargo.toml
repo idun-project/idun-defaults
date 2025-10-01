@@ -1,0 +1,44 @@
+[package]
+name = "ffetch"
+version = "0.5.7"
+authors = ["0l3d <0l3dgit@gmail.com>"]
+edition = "2021"
+description = "Fast, minimal & Rust-powered system fetcher"
+license = "GPL-3.0-or-later"
+repository = "https://github.com/0l3d/ffetch"
+readme = "README.md"
+keywords = ["system", "fetch", "rust", "terminal", "minimal"]
+categories = ["command-line-utilities", "filesystem", "hardware-support"]
+
+[lib]
+name = "ffetch"
+path = "src/lib.rs"
+
+[[bin]]
+name = "ffetch"
+path = "src/main.rs"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = "symbols"
+debug = false
+
+[profile.performance]
+inherits = "release"
+opt-level = 3
+codegen-units = 16
+lto = false
+
+[profile.size]
+inherits = "release"
+opt-level = "z"
+codegen-units = 1
+lto = true
+panic = "abort"
+strip = "symbols"
+
+
+[dependencies]
