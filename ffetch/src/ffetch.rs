@@ -117,12 +117,14 @@ pub fn get_board_vendor() -> Result<String, Error> {
 /// // Output: Motherboard name: MS-7D95
 /// ```
 pub fn get_board_name() -> Result<String, Error> {
-    let content = read_to_string("/sys/class/dmi/id/board_name").map_err(|e| {
-        Error::new(
-            e.kind(),
-            "Failed to read /sys/class/dmi/id/board_name. File may not exist or permission denied.",
-        )
-    })?;
+    let content = match read_to_string("/sys/class/dmi/id/board_name") {
+        Ok(s) => s,
+        // Alternative path for Raspberry Pi's
+        Err(_) => match read_to_string("/sys/firmware/devicetree/base/model") {
+            Ok(t) => t,
+            _ => String::from("Not found!")
+        }
+    };
 
     let trimmed = content.trim();
     if trimmed.is_empty() {
