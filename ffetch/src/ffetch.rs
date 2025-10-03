@@ -1,6 +1,6 @@
 use std::{
     env,
-    fs::{metadata, read, read_dir, read_link, read_to_string, File},
+    fs::{self, metadata, read, read_dir, read_link, read_to_string, File},
     io::{BufRead, BufReader, Error, ErrorKind},
     path::Path,
     process::Command,
@@ -1338,18 +1338,15 @@ pub fn get_monitor(monitor_index: usize) -> String {
     all_of_things[monitor_index].clone()
 }
 
-/// Gets the current terminal emulator name using `xprop`.
+/// Gets the current terminal emulator name from process parents.
 ///
-/// Uses X11 properties to identify the currently active window
-/// and extract the terminal emulator name from WM_CLASS.
+/// Walks the process tree, assuming that ffetch is run from a shell
+/// process, which was in-turn started by the terminal emulator. So,
+/// we end up with a good guess for the name of the emulator.
 ///
 /// # Returns
 ///
 /// Returns a `String` containing the terminal name or falls back to `$TERM`.
-///
-/// # Panics
-///
-/// Panics if `xprop` command fails to execute.
 ///
 /// # Examples
 ///
@@ -1359,42 +1356,28 @@ pub fn get_monitor(monitor_index: usize) -> String {
 /// let terminal = get_terminal();
 /// println!("Terminal: {}", terminal);
 /// // Output: Terminal: gnome-terminal
-/// ```
-///
-/// # Note
-///
-/// This function requires X11 and the `xprop` utility to be available.
-/// It may not work in Wayland environments.
 pub fn get_terminal() -> String {
-    let output = Command::new("xprop")
-        .args(["-root", "_NET_ACTIVE_WINDOW"])
-        .output()
-        .expect("xprop run error.");
+    // Step 1: Get parent PID
+    let ppid = unsafe { libc::getppid() };
 
-    let stdout = String::from_utf8_lossy(&output.stdout);
+    // Step 2: Read the parent's PPid field from /proc/<ppid>/status
+    let status_path = format!("/proc/{}/status", ppid);
+    let status = fs::read_to_string(status_path).ok();
 
-    let window_id = stdout
-        .split("window id # ")
-        .nth(1)
-        .map(|s| s.trim().to_string())
-        .unwrap_or_else(|| {
-            eprintln!("⚠️ Window not found.");
-            "".to_string()
-        });
-
-    let output = Command::new("xprop")
-        .args(["-id", &window_id])
-        .output()
-        .expect("xprop id run error.");
-
-    let info = String::from_utf8_lossy(&output.stdout);
-    for line in info.lines() {
-        if line.starts_with("WM_CLASS") {
-            if let Some(start) = line.find('"') {
-                if let Some(end) = line[start + 1..].find('"') {
-                    let terminal = &line[start + 1..start + 1 + end];
-                    return terminal.to_string();
-                }
+    // Find the line that starts with "PPid:"
+    if let Some(p) = status {
+        let grandparent_pid = p
+            .lines()
+            .find(|line| line.starts_with("PPid:"))
+            .and_then(|line| line.split_whitespace().nth(1)).unwrap()
+            .parse::<u32>()
+            .ok();
+        // Step 3: Get name of the grandparent process
+        if let Some(gp) = grandparent_pid {
+            let comm_path = format!("/proc/{}/comm", gp);
+            return match fs::read_to_string(comm_path) {
+                Ok(term) => term.trim_end().to_string(),
+                Err(_) => String::from("Unknown")
             }
         }
     }
