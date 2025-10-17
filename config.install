@@ -1,0 +1,20 @@
+post_install() {
+	if ! [ -d "/home/idun/.config" ]; then
+	  mkdir /home/idun/.config
+	  chown idun:idun /home/idun/.config
+	fi
+	post_upgrade
+}
+
+post_upgrade() {
+	if [ -f "/home/idun/.config/idunrc.toml" ]; then
+	  mv /home/idun/.config/idunrc.toml /home/idun/.config/idunrc.bak
+	fi
+
+    cp /etc/xdg/idun/idunrc.toml /home/idun/.config/idunrc.toml
+    chown idun:idun /home/idun/.config/idunrc.toml
+
+    cp /home/idun/.bashrc /home/idun/.bashrc.bak
+    cp /etc/xdg/idun/bashrc /home/idun/.bashrc
+    chown idun:idun /home/idun/.bashrc
+}

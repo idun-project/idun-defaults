@@ -12,18 +12,17 @@ fn read_lines(filename: &str) -> Vec<String> {
 
         let mut file = fs::File::create(filename).expect("file create error.");
         let content = r#"
-           #####
-          #######
-          ##O#O##
-          #######
-        ###########
-       #############
-      ###############
-      ################
-     #################
-   #####################
-   #####################
-     #################
+  _ ,________    _      _   _______
+.' '|    __  '..' '.  .' '.'  __   '
+|   |  .'  '. '.   |  |  |   '  '  |
+|   |  |    |  |   |  |  |   |  |  |
+|   |  |    |  |   |  |  |   |  |  |
+|   |  |    |  |   |  |  |   |  |  |
+|   |  |    |  |   |  |  |   |  |  |
+|   |  |    |  |   |  |  |   |  |  |
+|   |  '.___|  |   '__'  |   |  |  |
+ '_'.'_______'.'._______.''_'    '_'
+         Commodore Forever
 "#;
         file.write_all(content.as_bytes())
             .expect("file write error.");
@@ -59,22 +58,18 @@ fn get_contents() -> Vec<String> {
 
         let mut file = fs::File::create(&path).expect("file create error.");
         let content = r#"
-# middle config
-echo t.bold fg.yellow getUsername fg.black "@" fg.yellow getHostname
-echo fg.blue "Distro: " fg.yellow t.bold getOsName
-echo fg.blue "Platform: " fg.yellow t.bold getPlatform
-echo fg.blue "Kernel: " fg.yellow t.bold getKernel
-echo fg.blue "Memory: " fg.yellow t.bold getMemory " MB"
-echo fg.blue "CPU: " fg.yellow t.bold getCpu
-echo fg.blue "GPU: " fg.yellow t.bold getGpu
-echo fg.blue "Packages: " fg.yellow t.bold getPackages
-echo fg.blue "Disk: " fg.yellow t.bold getDisk(/)
-echo fg.blue "Desktop: " fg.yellow t.bold getDesktop
-echo fg.blue "Primary: " fg.yellow t.bold getMonitor(0)
-echo fg.blue "Uptime: " fg.yellow t.bold getUptime
-echo fg.blue "Shell: " fg.yellow t.bold getShell
+echo t.bold fg.white getUsername "@" fg.white getHostname
+echo fg.blue "Distro: " fg.white t.bold getOsName
+echo fg.blue "Kernel: " fg.white t.bold getKernel
+echo fg.blue "Disk: " fg.white t.bold getDisk(/)
+echo fg.blue "Memory: " fg.white t.bold getMemory " MB"
+echo fg.blue "Board: " fg.white t.bold getBoardName
+echo fg.blue "CPU: " fg.white t.bold getCpu
+echo fg.blue "Packages: " fg.white t.bold getPackages
+echo fg.blue "Uptime: " fg.white t.bold getUptime
+echo fg.blue "Terminal: " fg.white t.bold getTerm
 
-ascii = "/home/getUsername/.config/ffetch/ascii.txt"
+ascii = "/home/getUsername/.config/ffetch/logo"
 ascii_color = "fg.cyan"
 "#;
         file.write_all(content.as_bytes())

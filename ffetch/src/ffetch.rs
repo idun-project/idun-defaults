@@ -6,6 +6,19 @@ use std::{
     process::Command,
 };
 
+fn truncate_at_space(s: &str, loc: usize) -> &str {
+    // If the string is already short enough, return it as-is
+    if s.len() <= loc {
+        return s;
+    }
+
+    // Find the last space before or at position 35
+    match s[..loc].rfind(' ') {
+        Some(pos) => &s[..pos],  // cut at last space
+        None => &s[..loc],        // no space found; hard cut
+    }
+}
+
 /// Gets the Linux kernel version from `/proc/version`.
 ///
 /// This function reads the kernel version information and extracts
@@ -333,7 +346,7 @@ pub fn get_cpu_name() -> Result<String, Error> {
             if let Some(cpu) = line.split(':').nth(1) {
                 let name = cpu.trim();
                 if !name.is_empty() {
-                    return Ok(name.to_string());
+                    return Ok(truncate_at_space(name, 35).to_string());
                 }
             }
         }
