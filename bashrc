@@ -1,0 +1,463 @@
+#!/bin/bash
+# Idun's default .bashrc, Copyright© 2025 Brian Holdsworth
+# This is free software, released under the MIT License.
+#
+# This application provides a custom set of batch routines.
+# With the help of the 'idunsh' program, these routines can
+# launch software on the Commodore CPU from any Linux terminal.
+# It is by default used with 'shell.app' and the terminal is
+# run and displayed by the Commodore.
+#
+# With slightly different configuration managed automatically
+# below, these routines work from any kind of Linux Bash shell
+# console, screen, window, or remote connection.
+#
+# This script assumes the cartridge is physically connected to 
+# the Commodore and that the `shell.app` has been started.
+
+# If not running interactively, don't do anything
+[[ $- != *i* ]] && return
+
+# Regular aliases
+alias ls='ls --color=auto'
+alias grep='grep --color=auto'
+
+# Alias the idunsh command, optionally including "-o" for output redirect.
+if [[ $(< /proc/$PPID/comm) == "idunio" ]]; then
+  alias idunexec='idunsh -s exec'
+  alias idunmsg='idunsh'
+  alias catalog='idunsh --xarg=p catalog'
+else
+  alias idunexec='idunsh -s -o exec'
+  alias idunmsg='idunsh -o'
+  alias catalog='idunsh -o catalog'
+fi
+
+# Aliases for idun tools/commands
+alias sidplay='idunsh -s exec sidplay'
+alias mode='idunexec mode'
+alias browse='idunsh -s exec browse'
+alias reboot='_mluasend "sys.reboot(0)"'
+alias go64='_mluasend "sys.reboot(64)"'
+
+W='\[\033[37m\]'    # bright white foreground
+G='\[\033[32m\]'    # green foreground
+N='\[\033[0m\]'     # reset colors to default
+PS1="${W}\u${N} ${G}\W${N}\$ "
+
+# ---------------------------------------------------------------------------
+# INTERNAL UTILITIES
+# ---------------------------------------------------------------------------
+
+_mluasend() {
+    echo "$1" | socat - UNIX-CONNECT:/tmp/idunmm-lua
+}
+
+_fname() {
+    local arg="$1"
+
+    # If it begins with a-z or A-Z followed by a colon, return it unchanged
+    if [[ $arg =~ ^[A-Za-z]: ]]; then
+        return 0
+    fi
+
+    # Otherwise, check if it matches a regular file at the given relative path
+    if [[ -f $arg ]]; then
+        return 0
+    else
+        printf 'Error: File not found\n' >&2
+        return 1
+    fi
+}
+
+# ---------------------------------------------------------------------------
+# EMBEDDED LUA
+# ---------------------------------------------------------------------------
+
+# Run a Lua script through Idun's integral Lua interpreter
+mlua() {
+    # Usage: mlua luafile
+    local file="$1"
+    [[ -z "$file" ]] && { echo "Usage: mlua <filename>"; return 1; }
+
+    # Append .lua if not present
+    [[ "$file" != *.lua ]] && file="${file}.lua"
+
+    # Run the command
+    idunsh -s exec tty "l:${file}"
+}
+
+# ---------------------------------------------------------------------------
+# LISTING AND MOUNTING DRIVES
+# ---------------------------------------------------------------------------
+
+# List virtual drives. Also change their mounts.
+drives() {
+    # Usage: drives [<drive>:] [path-or-image]
+    # e.g. "drives d: mydisk.d64"
+    #      "drives e: ~/projects/goodies"
+    # No arguments → show drives
+    if [[ $# -eq 0 ]]; then
+        idunmsg -s drives
+        return
+    fi
+
+    # Must have exactly 2 arguments
+    if [[ $# -ne 2 ]]; then
+        echo "Usage: drives [a-z]: path-or-image"
+        return 1
+    fi
+
+    local drive="$1"
+    local target="$2"
+
+    # Validate drive format: single letter + colon
+    if [[ ! "$drive" =~ ^[A-Za-z]:$ ]]; then
+        echo "Error: First argument must be a single letter followed by a colon (e.g. A:)"
+        return 1
+    fi
+
+    # Handle .d64 / .d71 / .t64 images
+    if [[ "$target" =~ \.(d(64|71)|t64)$ ]]; then
+        idunmsg -s mount "$drive" "$target"
+        return
+    fi
+
+    # Otherwise, check that it’s a valid path
+    if [[ -d "$target" ]]; then
+        idunmsg -s assign "$drive" "$target"
+    else
+        echo "Error: Path not found: $target"
+        return 1
+    fi
+}
+
+# ---------------------------------------------------------------------------
+# DIRECTORY
+# ---------------------------------------------------------------------------
+
+# Get a directory of a virtual drive
+dir() {
+    # Usage: dir <drive>:
+    local arg="$1"
+
+    # If no argument given, just call normal dir
+    if [[ -z $arg ]]; then
+        command dir         # use `command` to avoid recursion
+        return $?
+    fi
+
+    # If argument starts with letter + colon (e.g., C:, Z:)
+    if [[ $arg =~ ^[A-Za-z]: ]]; then
+        idunmsg dir "$arg"   # send to idunsh
+        return $?
+    else
+        command dir "$arg"  # otherwise call normal dir
+        return $?
+    fi
+}
+
+# ---------------------------------------------------------------------------
+# STARTING PROGRAMS
+# ---------------------------------------------------------------------------
+
+# Launch an Idun app
+go() {
+  # Usage: go appname -or- go <drive>:appname
+  local app="$1"
+  
+  # 'go' command is for .app's. Add extension if not present.
+  if [[ $app != *.app ]]; then
+    app="${app}.app"
+  fi
+
+  if result=$(_fname "$app"); then
+    idunsh -s go "$app"
+  fi
+}
+
+# Load and run a plain, native Commodore PRG
+load() {
+  # Usage: load prgfile -or- load <drive>:prgfile
+  local prg="$1"
+  
+  if result=$(_fname "$prg"); then
+    idunsh -s load "$prg"
+  fi
+}
+
+# Show picture files
+show() {
+    # Show image files (.koa, .scr, .vdc) using the correct Idun viewer.
+    # Usage: show <file1> [file2 ...]
+    # If all args share the same extension among .koa/.scr/.vdc, pick the viewer:
+    #   .koa -> idunexec showkoa
+    #   .scr -> idunexec showzx
+    #   .vdc -> idunexec showvdc
+    # Otherwise (mixed/no/unrecognized ext) -> idunexec showvdc
+    if [[ $# -eq 0 ]]; then
+        echo "Usage: show <file1> [file2 ...]" >&2
+        return 1
+    fi
+
+    local allowed_koa="koa" allowed_scr="scr" allowed_vdc="vdc"
+    local ext
+    local uniq_exts=()   # unique recognized extensions among args (.koa/.scr/.vdc)
+    local saw_other=0    # set if an argument has no extension or an unrecognized extension
+
+    # helper to add unique extension to uniq_exts
+    _add_ext() {
+        local e="$1"
+        for i in "${uniq_exts[@]}"; do
+            [[ "$i" == "$e" ]] && return
+        done
+        uniq_exts+=("$e")
+    }
+
+    for f in "$@"; do
+        if [[ "$f" =~ \.([^.]+)$ ]]; then
+            ext="${BASH_REMATCH[1],,}"   # lowercase extension
+            case "$ext" in
+                koa|scr|vdc) _add_ext "$ext" ;;
+                *)
+                    # unrecognized extension -> treat as "other"
+                    saw_other=1
+                    ;;
+            esac
+        else
+            # no extension -> treat as "other"
+            saw_other=1
+        fi
+    done
+
+    # Decide which subcommand to use
+    local subcmd="showvdc"   # default
+    if [[ $saw_other -eq 0 && ${#uniq_exts[@]} -eq 1 ]]; then
+        case "${uniq_exts[0]}" in
+            koa) subcmd="showkoa" ;;
+            scr) subcmd="showzx" ;;
+            vdc) subcmd="showvdc" ;;
+        esac
+    else
+        # mixed/no/unrecognized extension -> default to showvdc (per spec)
+        subcmd="showvdc"
+    fi
+
+    # Resolve alias 'idunexec' if it exists, producing the actual command string.
+    # alias output looks like: alias idunexec='idunsh -s -o exec'
+    local idunexec_expansion
+    if alias idunexec >/dev/null 2>&1; then
+        # Extract RHS of alias safely (works with single or double quotes)
+        idunexec_expansion=$(alias idunexec 2>/dev/null | sed -E "s/^alias [^=]+=(['\"]?)(.*)\1$/\2/")
+    fi
+
+    # If no alias found, use literal "idunexec" (it may be an actual command)
+    if [[ -z "$idunexec_expansion" ]]; then
+        idunexec_expansion="idunexec"
+    fi
+
+    # Build and run the final command. Use printf '%q' to properly quote arguments.
+    # Example final eval string: idunsh -s -o exec showkoa 'file1.koa' 'file2.koa'
+    local quoted_args
+    quoted_args=$(printf ' %q' "$@")   # leading space included
+    local cmdline="${idunexec_expansion} ${subcmd}${quoted_args}"
+
+    # Execute and preserve exit status
+    eval "$cmdline"
+    return $?
+}
+
+# ightweight non-interactive fzf helpers for bash
+# Requires: fzf, fd (https://github.com/sharkdp/fd)
+
+# ---------------------------------------------------------------------------
+# CONFIGURATION
+# ---------------------------------------------------------------------------
+
+# Base directory for searches
+: "${FZF_LITE_HOME:=$HOME}"
+
+# Cache directory
+: "${FZF_LITE_CACHE:=$HOME/.cache/fzf-lite}"
+
+mkdir -p "$FZF_LITE_CACHE"
+
+# Cache files
+FZF_LITE_FILE_CACHE="$FZF_LITE_CACHE/files.txt"
+FZF_LITE_DIR_CACHE="$FZF_LITE_CACHE/dirs.txt"
+
+# Refresh interval (seconds) — 6 hours default
+: "${FZF_LITE_CACHE_TTL:=21600}"
+
+# ---------------------------------------------------------------------------
+# INTERNAL UTILITIES
+# ---------------------------------------------------------------------------
+
+# Non-interactive fuzzy filter
+_fzf_filter() {
+  local pattern="$1"; shift
+  fzf --filter "$pattern" --ignore-case <<< "$(printf '%s\n' "$@")"
+}
+
+# Check if cache file is fresh (based on TTL)
+_cache_is_fresh() {
+  local cachefile="$1"
+  [[ -f "$cachefile" ]] && (( $(date +%s) - $(stat -c %Y "$cachefile") < FZF_LITE_CACHE_TTL ))
+}
+
+# Refresh directory cache using fd
+_refresh_dir_cache() {
+  echo "Refreshing directory cache for $FZF_LITE_HOME..." >&2
+  fd --type d --hidden --exclude .git . "$FZF_LITE_HOME" > "$FZF_LITE_DIR_CACHE"
+}
+
+# Refresh file cache using fd
+_refresh_file_cache() {
+  echo "Refreshing file cache for $FZF_LITE_HOME..." >&2
+  fd --type f --hidden --exclude .git . "$FZF_LITE_HOME" > "$FZF_LITE_FILE_CACHE"
+}
+
+# Ensure both caches exist and are fresh
+_ensure_cache() {
+  _cache_is_fresh "$FZF_LITE_DIR_CACHE" || _refresh_dir_cache
+  _cache_is_fresh "$FZF_LITE_FILE_CACHE" || _refresh_file_cache
+}
+
+# ---------------------------------------------------------------------------
+# COMMANDS
+# ---------------------------------------------------------------------------
+
+# fcd — fuzzy cd into a directory
+fcd() {
+  # Usage: fcd pattern
+  local pattern="${1:-}"
+  _ensure_cache
+  local match
+  match=$(_fzf_filter "$pattern" $(<"$FZF_LITE_DIR_CACHE") | head -n1)
+  if [[ -n "$match" ]]; then
+    cd "$match" || return
+    echo "→ $(pwd)"
+  else
+    echo "No matching directory for '$pattern'" >&2
+    return 1
+  fi
+}
+
+# ff — fuzzy find file under FZF_LITE_HOME
+ff() {
+  # Usage: ff pattern
+  local pattern="$1"
+  _ensure_cache
+  _fzf_filter "$pattern" $(<"$FZF_LITE_FILE_CACHE") | head -n1
+}
+
+# fopen — fuzzy open file (default xdg-open)
+fopen() {
+  # Usage: fopen pattern [command...]
+  local pattern="$1"; shift
+  local cmd=("${@:-xdg-open}")
+  _ensure_cache
+  local match
+  match=$(_fzf_filter "$pattern" $(<"$FZF_LITE_FILE_CACHE") | head -n1)
+  if [[ -n "$match" ]]; then
+    "${cmd[@]}" "$match"
+  else
+    echo "No match for '$pattern'" >&2
+    return 1
+  fi
+}
+
+# fkill — fuzzy kill process
+fkill() {
+  # Usage: fkill pattern
+  local pattern="$1"
+  local pslist match
+  mapfile -t pslist < <(ps -e -o pid=,comm=)
+  match=$(_fzf_filter "$pattern" "${pslist[@]}" | awk '{print $1}' | head -n1)
+  if [[ -n "$match" ]]; then
+    kill -9 "$match" && echo "Killed PID $match"
+  else
+    echo "No matching process" >&2
+    return 1
+  fi
+}
+
+# fhist — fuzzy match from shell history
+fhist() {
+  # Usage: fhist pattern
+  local pattern="$1"
+  local hist
+  mapfile -t hist < <(history | sed 's/^[ ]*[0-9]*[ ]*//')
+  _fzf_filter "$pattern" "${hist[@]}" | head -n1
+}
+
+# ---------------------------------------------------------------------------
+# MAINTENANCE COMMANDS
+# ---------------------------------------------------------------------------
+
+# Refresh caches manually
+fzf_cache_refresh() {
+  echo "Rebuilding both caches..." >&2
+  _refresh_dir_cache
+  _refresh_file_cache
+  echo "Caches updated." >&2
+}
+
+# Show cache stats
+fzf_cache_info() {
+  echo "fzf-lite cache info:"
+  echo "  Home:   $FZF_LITE_HOME"
+  echo "  Dir cache:  $(wc -l < "$FZF_LITE_DIR_CACHE" 2>/dev/null || echo 0) entries"
+  echo "  File cache: $(wc -l < "$FZF_LITE_FILE_CACHE" 2>/dev/null || echo 0) entries"
+  echo "  Cache age (dir): $(( $(date +%s) - $(stat -c %Y "$FZF_LITE_DIR_CACHE" 2>/dev/null || echo 0) ))s"
+  echo "  Cache age (file): $(( $(date +%s) - $(stat -c %Y "$FZF_LITE_FILE_CACHE" 2>/dev/null || echo 0) ))s"
+}
+
+# ---------------------------------------------------------------------------
+# HELP MESSAGE
+# ---------------------------------------------------------------------------
+
+showhelp() {
+    less <<'EOF'
+Idun shell helper commands
+==========================
+mlua <luafile>
+    Run a Lua script through Idun’s internal Lua interpreter.
+drives [a-z]: <path>
+    Mount, modify, or show mounted disk images.
+dir [a-z]:
+    Get a short form directory of a virtual drive.
+catalog [a-z]:
+    Get a long form directory of a virtual drive.
+go <appname>
+    Launch an Idun app.
+load <prgname>
+    Load and run a plain, native Commodore PRG.
+show <image1.ext> [image2.ext...]
+    Show image files (.koa, .scr, .vdc) using the correct viewer.
+mode [debug] [vdc] [0-7]
+    Change, test, or show screen mode
+browse
+    Launch the file browser
+sidplay <sidfile>
+    Play a SID music file
+go64
+    Reboot in C64 mode
+reboot
+    Reboot the system normally
+
+Fuzzy find helpers
+====================
+fcd <pattern>
+    Fuzzy cd into a directory under $HOME.
+ff <pattern>
+    Fuzzy find a file in $HOME.
+fkill <pattern>
+    Fuzzy match and kill process.
+fhist <pattern>
+    Fuzzy search shell history.
+
+showhelp
+    Display this help text.
+EOF
+}
