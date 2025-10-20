@@ -59,6 +59,7 @@ fn get_contents() -> Vec<String> {
         let mut file = fs::File::create(&path).expect("file create error.");
         let content = r#"
 echo t.bold fg.white getUsername "@" fg.white getHostname
+echo fg.blue "Machine: " fg.white t.bold getMachine
 echo fg.blue "Distro: " fg.white t.bold getOsName
 echo fg.blue "Kernel: " fg.white t.bold getKernel
 echo fg.blue "Disk: " fg.white t.bold getDisk(/)
@@ -267,6 +268,9 @@ fn parser(tokens: Vec<String>) -> String {
                 } else {
                     return_val.push_str("Invalid getDiskusage");
                 }
+            }
+            "getMachine" => {
+                return_val.push_str(&ffetch::get_idun_system())
             }
             "echo" => {}
             _ => return_val.push_str(token),

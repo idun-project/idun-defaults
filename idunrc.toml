@@ -1,0 +1,260 @@
+# idun device types are:
+# Type 0: Native non-disk (C64 printer, etc.)
+# Type 1: Native disk drives (C64 devices 8-30)
+# Type 2: Generic Character Device (RS232, User port, RTC, KB, Screen)
+# Type 3: Joystick/Mouse
+# Type 4: Filesystem Device (simulated disks)
+# Type 5: Memory Mapper Device (high-speed data loader)
+# Type 6: Virtual TTY (connect Linux process)
+# Type 7: Virtual Disks (mount file D64, D71, etc.)
+# Type 8: User-defined application driver
+# Type 255: Unused
+
+# 8-bit flags value for simulated disks (Type 4/7):
+# --dcrush where d=support file delete
+#				 c=support change path
+#                r=support file rename
+#				 u=user specified default path
+#				 s=idun system path is default
+#				 h=user home path is default
+
+# Support 32 i/o devices identified by @, a-z, [, \, ], ^, _ 
+devices = [
+	# @: Memory mappper (type 5)
+	{id="@", type=5},
+	# A: native device 8 (type 1)
+	{id="A", type=1, addr=8, cmd=15, flags=0},
+	# B: native device 9 (type 1)
+	{id="B", type=1, addr=9, cmd=15, flags=0},
+	# C: Linux home directory (type 4)
+	{id="C", type=4, addr=10, cmd=31, flags=57},
+	# D: Mounted virtual disk (type 7)
+	# Full permissions and can be mounted RW
+	{id="D", type=7, addr=8, cmd=31, flags=56},
+	# E: User path to apps/ dir
+	{id="E", type=4, addr=10, cmd=31, flags=60, path="/home/idun/idun-base/apps"},
+	# F: unused
+	{id="F", type=255},
+	# G: unused
+	{id="G", type=4, addr=11, cmd=31, flags=60, path="/home/idun/idun-base/C64-PD-Games"},
+	# H: unused
+	{id="H", type=255},
+	# I: Configuration service
+	{id="I", type=2},
+	# J: USB gamepads (type 2)
+	{id="J", type=2},
+	# K: keyboard (type 2)
+	{id="K", type=2, addr=0, cmd=0, flags=0},
+	# L: Lua Programming Console Tty (type 6)
+	{id="L", type=6, cmd=31},
+	# M: Virtual modem/telnet client Tty (type 6)
+	{id="M", type=6, cmd=31},
+	# N: /dev/null (type 2)
+	{id="N", type=2, addr=0, cmd=0, flags=0},
+	# O: unused
+	{id="O", type=255},
+	# P: Native printer (type 0)
+	{id="P", type=0, addr=4, cmd=7, flags=64},
+	# Q: unused
+	{id="Q", type=255},
+	# R: unused
+	{id="R", type=255},
+	# S: Text screen (type 2)
+	{id="S", type=2, addr=3, cmd=0, flags=0},
+	# T: Real-time clock (type 2)
+	{id="T", type=2},
+	# U: User port RS232 (type 2)
+	{id="U", type=255, addr=3, cmd=0, flags=0},
+	# V: unused
+	{id="V", type=255},
+	# W: unused
+	{id="W", type=255},
+	# X: Virtual Linux Tty (type 6)
+	{id="X", type=6, cmd=31},
+	# Y: unused
+	{id="Y", type=255},
+	# Z: Linux system directory for idun (type 4)
+	{id="Z", type=4, addr=0, cmd=31, flags=2, path="sys"},
+	# [: Unix socket connection to local server ([:<pid>)
+	{id="[", type=8, addr=0, cmd=0, flags=4, path="$XDG_RUNTIME_DIR"},
+	# \: idunio log Debug output
+	{id="\\", type=2},
+	# ]: unused
+	{id="]", type=255},
+	# ^: Mounted virtual disk/tape used by 'go64'
+	# No permissions and only mounted as RO
+	{id="^", type=7, addr=8, cmd=31, flags=16},
+	# _: MemMapped Files Device
+	{id="_", type=5},
+]
+
+# Settings for Idun I/O connection
+#
+# There are two possibilities for the I/O:
+# 1. Normal mode- 'serial' device name is used to transfer I/O data
+#	 between the Commodore and the idunio service running locally on
+#	 the Respberry Pi. This is proxied thru managed `socat` relay.
+# 2. Development mode- I/O is between a Vice emulator running on the 
+#	 RPi or a networked computer, connected to 'devsock' socket.
+# 	 The Idun kernel and applications run as normal in the emulator.
+#
+#	 You *must* disable the 'serial' setting if you are developing on a
+#	 plain RPi without any Idun cartridge hardware.
+[io]
+serial 	= "/dev/ttyAMA0"
+devsock = "127.0.0.1:25232"	# "0.0.0.0:25232" allows emulator connect
+
+# Settings for log output of IO events to a file
+[log]
+file = "/var/log/idun/idunio"
+# 0=Off, 1=Error, 2=Warn, 3=Info, 4=Debug, 5=Trace
+level = 2
+
+# When the "mode" switch is enabled on the cartridge, these settings
+# select an alternate software stack to load at boot time.
+[mode]
+firmware = "idun64.binary"	# Starts C128 in C64 mode
+booter = "idun-64"			# Loads C64 version of idun kernel
+shell = "arcade.app"		# Loads game selector app
+
+[home]
+offset = 128
+config = "C:"   # device to serve as home directory
+
+[ssaver]
+offset = 134
+config = 10		# Screen saver timeout (minutes)
+
+[charset]
+offset = 135
+config = "CHRSET-STANDARD"	# Default character set
+
+[c128_bank]
+offset = 160
+config = [4, 255, 0, 255]	# Bank1 first, Bank1 last, exp. mem type, Bank0 last
+
+[c64_prescroll]
+offset = 164
+config = 0		# Minimum prescroll lines for VIC-II 80 column text output
+
+[c128_bank_exp]
+offset = 165
+config = [4, 0, 255]	# Last internal, first ERAM, last ERAM bank to use
+
+[c128_tpa_top]
+offset = 168
+config = 192		# Top page of Temporary Program Area (TPA)
+
+[vdc]
+offset = 169
+config = [27, 16]	# VDC default lines, memory size in KB
+
+# DEPRECATED - prescroll value hard-coded in acecon.asm
+# These 5 bytes (offset 171-175) reserved for versioning.
+[prescroll]
+offset = 171
+config = [99,99,99,99,99]	# Max. presroll lines for all video modes.
+
+# VDC palette color indexes
+# CODE(dec)   (bin)   DESCRIPTION
+# ---------   -rgbi   -----------
+#         0   %0000   black
+#         1   %0001   dark grey
+#         2   %0010   blue
+#         3   %0011   light blue
+#         4   %0100   green
+#         5   %0101   light green
+#         6   %0110   dark cyan
+#         7   %0111   cyan
+#         8   %1000   red
+#         9   %1001   light red
+#        10   %1010   purple
+#        11   %1011   light purple
+#        12   %1100   brown
+#        13   %1101   yellow
+#        14   %1110   light grey
+#        15   %1111   white
+[c128_palette_80]	# 80 column palette
+offset = 176
+# Char, cursor, status, separator, highlight, alert, border, screen color
+config = [14,13,6,3,6,12,0,0]
+
+# VIC-II palette color indexes
+# CODE(dec)   DESCRIPTION
+# ---------   -----------
+#         0   black
+#         1   dark grey
+#         2   blue
+#         3   light blue
+#         4   green
+#         5   light green
+#         6   medium grey
+#         7   cyan
+#         8   red
+#         9   light red
+#        10   purple
+#        11   orange
+#        12   brown
+#        13   yellow
+#        14   light grey
+#        15   white
+[c128_palette_40]	# 40 column palette
+offset = 184
+# Char, cursor, status, separator, highlight, alert, border, screen color
+config = [5,7,7,3,13,15,6,1]
+
+[c64_soft_80]
+offset = 192
+config = 255		# Enable C64 soft 80 columns for tty
+
+[c64_top]
+offset = 193
+config = 255	# Top page that can be used on C64
+
+[c64_bank_exp]
+offset = 194
+config = [0, 255, 0, 1]	# First ERAM, last ERAM Bank, internal exp. type, internal banks
+
+[c64_tpa_top]
+offset = 198
+config = 192		# Top page of Temporary Program Area (TPA)
+
+[video]
+offset = 199
+config = 1			# 1=PAL, 0=NTSC
+
+[repeat]
+offset = 200
+config = [20, 3]		# Key repeat delay, rate (in jiffies)
+
+[console_default]
+offset = 202
+config = 128			# Default single color characters, no attributes.
+
+[scrollback]
+offset = 203
+config = 10			# Lines in scrollback buffer
+
+[joyports]
+offset = 204
+config = [2, 1]		# Joystick port 1,2 device numbers
+
+[vdc_interlace]
+offset = 206
+config = [50,30]		# Max. interlace rows and #rows to enable interlace
+
+[shell_app]
+offset = 208
+config = "shell.app"
+
+[path]
+offset = 224
+config = "_:,Z:,.:,C:"		#specify up to 4 devices
+
+[tmp]
+offset = 236
+config = ".:"
+
+[screensaver]
+offset = 240
+config = "liner"

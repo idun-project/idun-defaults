@@ -17,4 +17,8 @@ post_upgrade() {
     cp /home/idun/.bashrc /home/idun/.bashrc.bak
     cp /etc/xdg/idun/bashrc /home/idun/.bashrc
     chown idun:idun /home/idun/.bashrc
+
+    cp /home/idun/.newshell /home/idun/.newshell.bak
+    cp /etc/xdg/idun/newshell /home/idun/.newshell
+    chown idun:idun /home/idun/.newshell
 }

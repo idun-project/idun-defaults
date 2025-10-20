@@ -1445,3 +1445,72 @@ pub fn get_disks(mountpoint: &str) -> String {
     }
     "".to_string()
 }
+
+/// Gets the Idun system description for the Commodore computer that
+/// is currently being used.
+/// 
+/// This is gathered from the global env variable: IDUN_SYS. This contains
+/// two numeric values, separated by a ";". The first value uses bitflags
+/// to describe the Commodore model and the display driver currently used.
+/// The second value is the total number of 64KiB memory banks, including
+/// any expanded memory like ERAM or REU.
+/// 
+/// # e.g. IDUN_SYS="136;66"
+/// 136 -> %10001000 -> C128 on VDC
+/// 66 -> 66 * 64KiB -> 4224 KiB RAM
+/// 
+/// # System model bitflags
+/// bit 7 = Commodore 128
+/// bit 6 = Commodore 64
+/// bit 5 = C64 Ultimate
+/// bit 4 = C256
+/// bit 3 = VDC display
+/// bit 2 = VIC-II display
+/// bit 1 = Soft80 display
+/// bit 0 = Idun VDC+
+/// 
+/// # Returns
+/// String describing the Commodore system, if the "IDUN_SYS" environment
+/// variable exists. Otherwise, returns "Unknown".
+/// 
+/// e.g With IDUN_SYS="136;66" returns "Commodore 128 4224K on VDC"
+pub fn get_idun_system() -> String {
+    match env::var("IDUN_SYS") {
+        Ok(val) => {
+            let mut machine = String::new();
+            let mut display = String::new();
+            let mut banks: u8 = 1;
+
+            for (i,v) in val.split(';').enumerate() {
+                if i==0 {
+                    let model: u8 = v.parse().unwrap_or(0);
+                    if model&128 > 0 {
+                        machine.push_str("Commodore 128");
+                    } else if model&64 > 0 {
+                        machine.push_str("Commodore 64");
+                    } else if model&32 > 0 {
+                        machine.push_str("C64 Ultimate");
+                    } else if model&16 > 0 {
+                        machine.push_str("C256");
+                    }
+
+                    if model&8 > 0 {
+                        display.push_str("VDC");
+                    } else if model&4 > 0 {
+                        display.push_str("VIC-II");
+                    } else if model&2 > 0 {
+                        display.push_str("Soft80");
+                    } else if model&1 > 0 {
+                        display.push_str("VDC+");
+                    }
+                }
+                
+                if i==1 {
+                    banks = v.parse().unwrap_or(1);
+                }
+            }
+            format!("{} {}K on {}", machine, (banks as u16)*64, display)
+        }
+        Err(_) => String::from("Unknown")
+    }
+}
