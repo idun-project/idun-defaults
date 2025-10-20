@@ -147,7 +147,7 @@ pub fn get_board_name() -> Result<String, Error> {
         ));
     }
 
-    Ok(trimmed.to_string())
+    Ok(truncate_at_space(trimmed, 35).to_string())
 }
 
 /// Gets the motherboard version from `/sys/class/dmi/id/board_version`.
@@ -662,7 +662,8 @@ pub fn get_uptime() -> Result<String, Error> {
         )
     })?;
 
-    Ok(stdout.trim_start_matches("up ").trim().to_string())
+    let up = stdout.trim_start_matches("up ").trim();
+    Ok(truncate_at_space(up, 35).to_string())
 }
 
 /// Gets the number of installed packages from various package managers.
