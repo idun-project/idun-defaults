@@ -1,5 +1,6 @@
 pub mod ffetch;
 use std::{fs, io::Write, path::Path};
+use terminal_size::{terminal_size, Width, Height};
 
 fn read_lines(filename: &str) -> Vec<String> {
     let conf_path = Path::new(filename);
@@ -314,19 +315,26 @@ fn get_option(token: &str) -> String {
 fn write_fetch(ascii: Vec<String>, ascii_color: String) -> String {
     let max_width = ascii.iter().map(|line| line.len()).max().unwrap_or(0);
     let mut ascii_index = 0;
+    let (twidth, _) = terminal_size().unwrap_or((Width(40),Height(24)));
+
     for i in 0..get_contents().len() {
         let tokens = &get_contents()[i];
         let lexed_conf: Vec<String> = lex_string(tokens);
         let replaced_conf = parser(lexed_conf);
 
         if find_token(tokens, "echo") {
-            let end_conf = format!(
-                "{}{:<width$}\x1b[0m    {}\x1b[0m",
-                parse_ansi_code(&ascii_color),
-                ascii.get(ascii_index).unwrap_or(&"".to_string()),
-                replaced_conf,
-                width = max_width
-            );
+            let end_conf: String;
+            if twidth >= Width(80) {
+                end_conf = format!(
+                    "{}{:<width$}\x1b[0m    {}\x1b[0m",
+                    parse_ansi_code(&ascii_color),
+                    ascii.get(ascii_index).unwrap_or(&"".to_string()),
+                    replaced_conf,
+                    width = max_width
+                );
+            } else {
+                end_conf = format!("{}\x1b[0m", replaced_conf);
+            }
             ascii_index += 1;
             println!("{end_conf}");
         }

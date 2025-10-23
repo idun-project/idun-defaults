@@ -43,3 +43,4 @@ strip = "symbols"
 
 [dependencies]
 libc = "0.2.176"
+terminal_size = "0.4.3"
