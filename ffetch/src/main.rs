@@ -350,6 +350,7 @@ fn write_fetch(ascii: Vec<String>, ascii_color: String) -> String {
         );
         ascii_index += 1;
     }
+    println!("\x1b[0m");
     "".to_string()
 }
 
