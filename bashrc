@@ -173,6 +173,8 @@ go() {
 
   if result=$(_fname "$app"); then
     idunsh -s go "$app"
+  else
+    idunsh go "z:${app}"
   fi
 }
 
@@ -183,6 +185,16 @@ load() {
   
   if result=$(_fname "$prg"); then
     idunsh -s load "$prg"
+  fi
+}
+
+# Load and run a z80 program
+zload() {
+  # Usage: zload z80prg -or- zload <drive>:z80prg
+  local prg="$1"
+  
+  if result=$(_fname "$prg"); then
+    idunsh -s exec zload "$prg"
   fi
 }
 
@@ -295,14 +307,13 @@ FZF_LITE_DIR_CACHE="$FZF_LITE_CACHE/dirs.txt"
 
 # Non-interactive fuzzy filter
 _fzf_filter() {
-  local pattern="$1"; shift
-  fzf --filter "$pattern" --ignore-case <<< "$(printf '%s\n' "$@")"
+    local pattern="$1"
+    fzf --filter "$pattern" --ignore-case
 }
 
 # Check if cache file is fresh (based on TTL)
 _cache_is_fresh() {
-  local cachefile="$1"
-  [[ -f "$cachefile" ]] && (( $(date +%s) - $(stat -c %Y "$cachefile") < FZF_LITE_CACHE_TTL ))
+  [[ -f "$1" ]] && (( $(date +%s) - $(stat -c %Y "$1") < $FZF_LITE_CACHE_TTL ))
 }
 
 # Refresh directory cache using fd
@@ -329,11 +340,10 @@ _ensure_cache() {
 
 # fcd — fuzzy cd into a directory
 fcd() {
-  # Usage: fcd pattern
   local pattern="${1:-}"
   _ensure_cache
   local match
-  match=$(_fzf_filter "$pattern" $(<"$FZF_LITE_DIR_CACHE") | head -n1)
+  match=$( <"$FZF_LITE_DIR_CACHE" _fzf_filter "$pattern" | head -n1)
   if [[ -n "$match" ]]; then
     cd "$match" || return
     echo "→ $(pwd)"
@@ -348,7 +358,7 @@ ff() {
   # Usage: ff pattern
   local pattern="$1"
   _ensure_cache
-  _fzf_filter "$pattern" $(<"$FZF_LITE_FILE_CACHE") | head -n1
+  _fzf_filter "$pattern" < "$FZF_LITE_FILE_CACHE" | head -n1
 }
 
 # fopen — fuzzy open file (default xdg-open)
@@ -358,37 +368,13 @@ fopen() {
   local cmd=("${@:-xdg-open}")
   _ensure_cache
   local match
-  match=$(_fzf_filter "$pattern" $(<"$FZF_LITE_FILE_CACHE") | head -n1)
+  match=$(_fzf_filter "$pattern" < "$FZF_LITE_FILE_CACHE") | head -n1
   if [[ -n "$match" ]]; then
     "${cmd[@]}" "$match"
   else
     echo "No match for '$pattern'" >&2
     return 1
   fi
-}
-
-# fkill — fuzzy kill process
-fkill() {
-  # Usage: fkill pattern
-  local pattern="$1"
-  local pslist match
-  mapfile -t pslist < <(ps -e -o pid=,comm=)
-  match=$(_fzf_filter "$pattern" "${pslist[@]}" | awk '{print $1}' | head -n1)
-  if [[ -n "$match" ]]; then
-    kill -9 "$match" && echo "Killed PID $match"
-  else
-    echo "No matching process" >&2
-    return 1
-  fi
-}
-
-# fhist — fuzzy match from shell history
-fhist() {
-  # Usage: fhist pattern
-  local pattern="$1"
-  local hist
-  mapfile -t hist < <(history | sed 's/^[ ]*[0-9]*[ ]*//')
-  _fzf_filter "$pattern" "${hist[@]}" | head -n1
 }
 
 # ---------------------------------------------------------------------------
@@ -417,7 +403,7 @@ fzf_cache_info() {
 # HELP MESSAGE
 # ---------------------------------------------------------------------------
 
-showhelp() {
+help() {
     less <<'EOF'
 Idun shell helper commands
 ==========================
@@ -433,6 +419,8 @@ go <appname>
     Launch an Idun app.
 load <prgname>
     Load and run a plain, native Commodore PRG.
+zload <z80prog>
+    Load and run a z80 program on the z80 CPU.
 show <image1.ext> [image2.ext...]
     Show image files (.koa, .scr, .vdc) using the correct viewer.
 mode [debug] [vdc] [0-7]
@@ -452,12 +440,8 @@ fcd <pattern>
     Fuzzy cd into a directory under $HOME.
 ff <pattern>
     Fuzzy find a file in $HOME.
-fkill <pattern>
-    Fuzzy match and kill process.
-fhist <pattern>
-    Fuzzy search shell history.
 
-showhelp
+help
     Display this help text.
 EOF
 }

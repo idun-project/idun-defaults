@@ -110,12 +110,19 @@ file = "/var/log/idun/idunio"
 # 0=Off, 1=Error, 2=Warn, 3=Info, 4=Debug, 5=Trace
 level = 2
 
-# When the "mode" switch is enabled on the cartridge, these settings
-# select an alternate software stack to load at boot time.
+# When the "mode" switch is disabled on the cartridge (position away from
+# Commodore), these settings select the software stack to load at boot time.
+# The default shell is the one listed in [shell_app].
+[start]
+firmware = "idun.binary"	# Start C128 in native mode. Cart hidden on C64.
+booter = "idun128"			# Loads C128 version of idun kernel
+
+# When the "mode" switch is enabled on the cartridge, (position toward
+# Commodore), these settings select an alternate software stack to boot.
 [mode]
-firmware = "idun64.binary"	# Starts C128 in C64 mode
+firmware = "idun64.binary"	# Starts C128 in C64 mode, or boots a C64.
 booter = "idun-64"			# Loads C64 version of idun kernel
-shell = "arcade.app"		# Loads game selector app
+shell = "shell.app"			# Loads the shell.app
 
 [home]
 offset = 128
