@@ -1474,7 +1474,7 @@ pub fn get_disks(mountpoint: &str) -> String {
 /// String describing the Commodore system, if the "IDUN_SYS" environment
 /// variable exists. Otherwise, returns "Unknown".
 /// 
-/// e.g With IDUN_SYS="136;66" returns "Commodore 128 4224K on VDC"
+/// e.g With IDUN_SYS="136;66" returns "Commodore 128/4224K/VDC"
 pub fn get_idun_system() -> String {
     match env::var("IDUN_SYS") {
         Ok(val) => {
@@ -1510,7 +1510,7 @@ pub fn get_idun_system() -> String {
                     banks = v.parse().unwrap_or(1);
                 }
             }
-            format!("{} {}K on {}", machine, (banks as u16)*64, display)
+            format!("{}/{}K/{}", machine, (banks as u16)*64, display)
         }
         Err(_) => String::from("Unknown")
     }

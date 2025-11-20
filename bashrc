@@ -33,17 +33,15 @@ else
   alias catalog='idunsh -o catalog'
 fi
 
-# Aliases for idun tools/commands
-alias sidplay='idunsh -s exec sidplay'
-alias mode='idunexec mode'
-alias browse='idunsh -s exec browse'
+# Aliases for reboot/go64/help
 alias reboot='_mluasend "sys.reboot(0)"'
 alias go64='_mluasend "sys.reboot(64)"'
+alias help='idunsh exec tty l:help.lua'
 
 W='\[\033[37m\]'    # bright white foreground
 G='\[\033[32m\]'    # green foreground
 N='\[\033[0m\]'     # reset colors to default
-PS1="${W}\u${N} ${G}\W${N}\$ "
+PS1="${W}\u ${N} ${G}\W ${N}\$ "
 
 # ---------------------------------------------------------------------------
 # INTERNAL UTILITIES
@@ -68,6 +66,33 @@ _fname() {
         printf 'Error: File not found\n' >&2
         return 1
     fi
+}
+
+# ---------------------------------------------------------------------------
+# Handler to allow easy running of any Idun programs in Z:
+# ---------------------------------------------------------------------------
+command_not_found_handle() {
+    local cmd="$1"
+    shift
+
+    # Attempt glob expansion
+    local expanded=()
+    for arg in "$@"; do
+        # If the glob matches, expand; else keep original
+        if compgen -G "$arg" > /dev/null; then
+            expanded+=( $arg )    # unquoted = expand
+        else
+            expanded+=( "$arg" )  # keep literal
+        fi
+    done
+
+    if [[ -f "${IDUN_SYS_DIR}/sys/${cmd}" ]]; then
+        idunexec "$cmd" "${expanded[@]}"
+    else
+        printf '%s: command not found\n' "$cmd" >&2
+    fi
+
+    return 127
 }
 
 # ---------------------------------------------------------------------------
@@ -171,7 +196,7 @@ go() {
     app="${app}.app"
   fi
 
-  if result=$(_fname "$app"); then
+  if [[ -f $app ]]; then
     idunsh -s go "$app"
   else
     idunsh go "z:${app}"
@@ -403,10 +428,10 @@ fzf_cache_info() {
 # HELP MESSAGE
 # ---------------------------------------------------------------------------
 
-help() {
+builtin() {
     less <<'EOF'
-Idun shell helper commands
-==========================
+Idun shell built-in commands
+============================
 mlua <luafile>
     Run a Lua script through Idun’s internal Lua interpreter.
 drives [a-z]: <path>
@@ -423,12 +448,6 @@ zload <z80prog>
     Load and run a z80 program on the z80 CPU.
 show <image1.ext> [image2.ext...]
     Show image files (.koa, .scr, .vdc) using the correct viewer.
-mode [debug] [vdc] [0-7]
-    Change, test, or show screen mode
-browse
-    Launch the file browser
-sidplay <sidfile>
-    Play a SID music file
 go64
     Reboot in C64 mode
 reboot

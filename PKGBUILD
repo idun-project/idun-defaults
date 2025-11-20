@@ -12,7 +12,7 @@ install="config.install"
 
 build() {
   cd ../ffetch
-  cargo build --release --target arm-unknown-linux-gnueabihf
+  cargo zigbuild --release --target arm-unknown-linux-gnueabihf
 }
 
 package() {
