@@ -33,10 +33,9 @@ else
   alias catalog='idunsh -o catalog'
 fi
 
-# Aliases for reboot/go64/help
+# Aliases for reboot/help
 alias reboot='_mluasend "sys.reboot(0)"'
-alias go64='_mluasend "sys.reboot(64)"'
-alias help='idunsh exec tty l:help.lua'
+alias help='idunsh exec tty l:help.lua $'
 
 W='\[\033[37m\]'    # bright white foreground
 G='\[\033[32m\]'    # green foreground
@@ -304,7 +303,19 @@ show() {
     return $?
 }
 
-# ightweight non-interactive fzf helpers for bash
+# Restart cartridge in BASIC mode
+basic() {
+    # If IDUN_SYS is unset or empty, do nothing
+    [[ -z "$IDUN_SYS" ]] && return
+    
+    # Extract sys from IDUN_SYS="sys;banks"
+    local sys="${IDUN_SYS%%;*}"
+
+    # Send the command
+    _mluasend "sys.reboot(${sys})"
+}
+
+# lightweight non-interactive fzf helpers for bash
 # Requires: fzf, fd (https://github.com/sharkdp/fd)
 
 # ---------------------------------------------------------------------------
@@ -386,22 +397,6 @@ ff() {
   _fzf_filter "$pattern" < "$FZF_LITE_FILE_CACHE" | head -n1
 }
 
-# fopen — fuzzy open file (default xdg-open)
-fopen() {
-  # Usage: fopen pattern [command...]
-  local pattern="$1"; shift
-  local cmd=("${@:-xdg-open}")
-  _ensure_cache
-  local match
-  match=$(_fzf_filter "$pattern" < "$FZF_LITE_FILE_CACHE") | head -n1
-  if [[ -n "$match" ]]; then
-    "${cmd[@]}" "$match"
-  else
-    echo "No match for '$pattern'" >&2
-    return 1
-  fi
-}
-
 # ---------------------------------------------------------------------------
 # MAINTENANCE COMMANDS
 # ---------------------------------------------------------------------------
@@ -422,45 +417,4 @@ fzf_cache_info() {
   echo "  File cache: $(wc -l < "$FZF_LITE_FILE_CACHE" 2>/dev/null || echo 0) entries"
   echo "  Cache age (dir): $(( $(date +%s) - $(stat -c %Y "$FZF_LITE_DIR_CACHE" 2>/dev/null || echo 0) ))s"
   echo "  Cache age (file): $(( $(date +%s) - $(stat -c %Y "$FZF_LITE_FILE_CACHE" 2>/dev/null || echo 0) ))s"
-}
-
-# ---------------------------------------------------------------------------
-# HELP MESSAGE
-# ---------------------------------------------------------------------------
-
-builtin() {
-    less <<'EOF'
-Idun shell built-in commands
-============================
-mlua <luafile>
-    Run a Lua script through Idun’s internal Lua interpreter.
-drives [a-z]: <path>
-    Mount, modify, or show mounted disk images.
-dir [a-z]:
-    Get a short form directory of a virtual drive.
-catalog [a-z]:
-    Get a long form directory of a virtual drive.
-go <appname>
-    Launch an Idun app.
-load <prgname>
-    Load and run a plain, native Commodore PRG.
-zload <z80prog>
-    Load and run a z80 program on the z80 CPU.
-show <image1.ext> [image2.ext...]
-    Show image files (.koa, .scr, .vdc) using the correct viewer.
-go64
-    Reboot in C64 mode
-reboot
-    Reboot the system normally
-
-Fuzzy find helpers
-====================
-fcd <pattern>
-    Fuzzy cd into a directory under $HOME.
-ff <pattern>
-    Fuzzy find a file in $HOME.
-
-help
-    Display this help text.
-EOF
 }
