@@ -102,7 +102,7 @@ command_not_found_handle() {
 mlua() {
     # Usage: mlua luafile
     local file="$1"
-    [[ -z "$file" ]] && { echo "Usage: mlua <filename>"; return 1; }
+    [[ -z "$file" ]] && { idunsh -s exec tty "l:"; return; }
 
     # Append .lua if not present
     [[ "$file" != *.lua ]] && file="${file}.lua"
@@ -195,9 +195,9 @@ go() {
     app="${app}.app"
   fi
 
-  if [[ -f $app ]]; then
+  if result=$(_fname "$app"); then
     idunsh -s go "$app"
-  else
+  elif [[ -f "${IDUN_SYS_DIR}/sys/${app}" ]]; then
     idunsh go "z:${app}"
   fi
 }
