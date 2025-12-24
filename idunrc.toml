@@ -95,14 +95,14 @@ devices = [
 #	 between the Commodore and the idunio service running locally on
 #	 the Respberry Pi. This is proxied thru managed `socat` relay.
 # 2. Development mode- I/O is between a Vice emulator running on the 
-#	 RPi or a networked computer, connected to 'devsock' socket.
-# 	 The Idun kernel and applications run as normal in the emulator.
+#	 RPi or a networked computer, connected to 'socket'. The Idun
+#	 kernel and applications run as normal in the emulator.
 #
 #	 You *must* disable the 'serial' setting if you are developing on a
 #	 plain RPi without any Idun cartridge hardware.
 [io]
 serial 	= "/dev/ttyAMA0"
-devsock = "127.0.0.1:25232"	# "0.0.0.0:25232" allows emulator connect
+socket = "127.0.0.1:25232"	# "0.0.0.0:25232" to allow remote conn
 
 # Settings for log output of IO events to a file
 [log]
