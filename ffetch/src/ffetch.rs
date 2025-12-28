@@ -1485,14 +1485,14 @@ pub fn get_idun_system() -> String {
             for (i,v) in val.split(';').enumerate() {
                 if i==0 {
                     let model: u8 = v.parse().unwrap_or(0);
-                    if model&128 > 0 {
-                        machine.push_str("Commodore 128");
-                    } else if model&64 > 0 {
-                        machine.push_str("Commodore 64");
+                    if model&16 > 0 {
+                        machine.push_str("C256");
                     } else if model&32 > 0 {
                         machine.push_str("C64 Ultimate");
-                    } else if model&16 > 0 {
-                        machine.push_str("C256");
+                    } else if model&64 > 0 {
+                        machine.push_str("Commodore 64");
+                    } else if model&128 > 0 {
+                        machine.push_str("Commodore 128");
                     }
 
                     if model&8 > 0 {
