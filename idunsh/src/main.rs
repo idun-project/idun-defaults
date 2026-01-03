@@ -6,20 +6,16 @@ use std::process;
 use std::fs;
 use std::str;
 use std::thread;
-use std::thread::JoinHandle;
 use std::time::Duration;
 use bstr::BString;
 use nix::unistd;
 use std::path::Path;
-use std::io::{Read, Write, ErrorKind, stdout};
-use std::os::unix::net::UnixStream;
-use mio::net::UnixListener;
-use mio::{Events, Interest, Poll, Token};
+use std::io::{Read, Write, stdout};
+use std::os::unix::net::{UnixListener, UnixStream};
 use clap::{Parser,Subcommand};
 mod util;
 use util::PetString;
 
-const RESPLISTEN: Token      = Token(65535);
 const LUAPORT: &str          = "/tmp/idunmm-lua";
 
 // Supported shell command constants
@@ -129,60 +125,37 @@ fn main() -> Result<()> {
         }
     }
     // If output is redirected, create a thread to handle this...
-    let mut ojoin: Option<JoinHandle<Result<()>>> = None;
-    if cli.output {
-        // Create listening socket for response
-        let mut poll = Poll::new()?;
-        let mut events = Events::with_capacity(128);
-        let respath = format!("/run/user/{}/{}", unistd::getuid(), process::id());
-        let resport = match UnixListener::bind(Path::new(&respath)) {
-            Ok(mut s) => {
-                poll.registry().register(&mut s, RESPLISTEN, Interest::READABLE)?;
-                s
-            },
-            Err(e) => bail!("Redirect socket create failed, error: {}", e)
-        };
-        ojoin = Some(thread::spawn(move || -> Result<()> {
-'outer: loop {
-            // Wait on response
-            poll.poll(&mut events, None)?;
-
-            // Recv responses on socket
-            if let Some(event) = events.iter().next() {
-                match event.token() {
-                    RESPLISTEN => {
-                        match resport.accept() {
-                            Ok((mut s, _)) => {
-                                loop {
-                                    let mut buf = [0u8; 80];
-                                    match s.read(&mut buf) {
-                                        Ok(len) if len>0 => {
-                                            let pet = PetString::new(&BString::new(buf[..len].to_vec()));
-                                            let pets = String::from(pet);
-                                            let pets = pets.replace('\r', "\n");
-                                            print!("{}", pets);
-                                        },
-                                        Ok(_) => break 'outer,
-                                        Err(e) if e.kind()==ErrorKind::WouldBlock => continue,
-                                        Err(e) if e.kind()==ErrorKind::BrokenPipe => break 'outer,
-                                        Err(e) => { return Err(e.into()) }
-                                    };
-                                }
-                            },
-                            Err(e) => { return Err(e.into()) }
-                        };
-                    },
-                    Token(tok) => bail!("Mio token error: {}", tok)
+    let ojoin = match cli.output {
+        true => {
+            // Create listening socket for response
+            let respath = format!("/run/user/{}/{}", unistd::getuid(), process::id());
+            let resport = UnixListener::bind(Path::new(&respath))?;
+            Some(thread::spawn(move || -> Result<()> {
+                // Wait on response
+                match resport.accept()? {
+                    (mut s, _) => {
+                        let mut buf = [0u8; 4096];
+                        loop {
+                            match s.read(&mut buf)? {
+                                0 => break,
+                                n => {
+                                    let pet = PetString::new(&BString::new(buf[..n].to_vec()));
+                                    let pets = String::from(pet).replace('\r', "\n");
+                                    print!("{}", pets);
+                                },
+                            }
+                        }
+                    }
                 }
-            };
-        }
-        // Cleanup
-        println!();
-        stdout().flush()?;
-        fs::remove_file(&respath)?;
-        Ok(())
-        }));
-    }
+                // Cleanup
+                println!();
+                stdout().flush()?;
+                fs::remove_file(&respath)?;
+                Ok(())
+            }))
+        },
+        false => None
+    };
 
     // Assign `proc` variable if output needs to be redirected to this process.
     let proc = if ojoin.is_some() {process::id()} else {0};
@@ -200,9 +173,7 @@ fn main() -> Result<()> {
         },
         Some(Syscommands::Drives { dev}) => {
             let argstr = dev.clone().unwrap_or_default();
-            shell(DRIVES_CMD, 
-            &argstr,
-            proc)?
+            shell(DRIVES_CMD, &argstr, proc)?
         },
         Some(Syscommands::Mount { dev, dimage }) => {
             let mut argstr = String::from(dev);
@@ -234,7 +205,7 @@ fn main() -> Result<()> {
         Some(oj) => {
             match oj.join() {
                 Ok(_) => Ok(()),
-                Err(_) => bail!("Failed receiving redirected output")
+                Err(e) => bail!("Failed receiving redirected output E:{:?}", e)
             }
         },
         None => Ok(())
