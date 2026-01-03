@@ -13,6 +13,7 @@ impl PetString {
         match a {
             0x41..=0x5A => a+0x80,
             0x61..=0x7A => a-0x20,
+            0x7B..=0x7F => a+0x60,
             _ => a
         }
     }
@@ -29,6 +30,7 @@ impl PetString {
             'a'..='z' => p-0x20,
             'A'..='Z' => p+0x20,
             'Á'..='Ú' => p-0x80,
+            'Þ' => p-0x60,
             _ => p
         }
     }
