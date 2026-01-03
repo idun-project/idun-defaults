@@ -67,8 +67,31 @@ _fname() {
     fi
 }
 
+_toolhdr() {
+    local file=$1
+    local b
+
+    [[ -r $file ]] || return 1
+
+    # Read first 8 bytes as hex octets
+    read -r -a b < <(
+        od -An -tx1 -N8 -- "$file"
+    )
+
+    # Must have exactly 8 bytes
+    (( ${#b[@]} == 8 )) || return 1
+
+    # Match: 4c xx xx cb 06 10 40 00
+    [[ ${b[0]} == 4c &&
+       ${b[3]} == cb &&
+       ${b[4]} == 06 &&
+       ${b[5]} == 10 &&
+       ${b[6]} == 40 &&
+       ${b[7]} == 00 ]]
+}
+
 # ---------------------------------------------------------------------------
-# Handler to allow easy running of any Idun programs in Z:
+# Handler to allow easy running of any Idun programs
 # ---------------------------------------------------------------------------
 command_not_found_handle() {
     local cmd="$1"
@@ -85,7 +108,15 @@ command_not_found_handle() {
         fi
     done
 
+    # If command found in Z:, then execute
+    # else if includes a device prefix, try to execute
+    # else if a file in the current directory with a
+    # valid Idun Tool header, try to execute
     if [[ -f "${IDUN_SYS_DIR}/sys/${cmd}" ]]; then
+        idunexec "$cmd" "${expanded[@]}"
+    elif [[ $cmd =~ ^[A-Za-z]: ]]; then
+        idunexec "$cmd" "${expanded[@]}"
+    elif _toolhdr "./$cmd"; then
         idunexec "$cmd" "${expanded[@]}"
     else
         printf '%s: command not found\n' "$cmd" >&2
@@ -203,8 +234,8 @@ go() {
 }
 
 # Load and run a plain, native Commodore PRG
-load() {
-  # Usage: load prgfile -or- load <drive>:prgfile
+run() {
+  # Usage: run prgfile -or- run <drive>:prgfile
   local prg="$1"
   
   if result=$(_fname "$prg"); then
