@@ -168,8 +168,15 @@ drives() {
 
     # Validate drive format: single letter + colon
     if [[ ! "$drive" =~ ^[A-Za-z]:$ ]]; then
-        echo "Error: First argument must be a single letter followed by a colon (e.g. A:)"
+        echo "Error: First argument must be a single letter followed by a colon (e.g. d:)"
         return 1
+    fi
+
+    # If trying to mount to a: or b:, then only allow for
+    # C64 Ultimate and only if configured with the IP.
+    if [[ "$drive" =~ ^[aAbB]:$ ]] && [[ -n $C64_ULTIMATE_IP ]]; then
+        idunmsg -u mount "$drive" "$target"
+        return
     fi
 
     # Handle .d64 / .d71 / .t64 images
@@ -233,14 +240,41 @@ go() {
   fi
 }
 
-# Load and run a plain, native Commodore PRG
+# Load and run a Commodore PRG or launch other content on
+# a C64 Ultimate.
 run() {
-  # Usage: run prgfile -or- run <drive>:prgfile
-  local prg="$1"
-  
-  if result=$(_fname "$prg"); then
-    idunsh -s load "$prg"
+  local opt_u=0
+  local filename
+
+  # Parse optional -u switch
+  if [[ $1 == "-u" ]]; then
+    opt_u=1
+    shift
   fi
+
+  # Check filename is reasonable
+  filename=$1
+  if ! result=$(_fname "$filename"); then
+    printf 'Usage: run [-u] filename\n' >&2
+    return 2
+  fi
+
+  # Extract lowercase extension (if any)
+  local ext=${filename##*.}
+  ext=${ext,,}
+
+  case "$ext" in
+    sid|mod|crt)
+      idunsh -u load "$filename"
+      ;;
+    *)
+      if (( opt_u )); then
+        idunsh -u load "$filename"
+      else
+        idunsh -s load "$filename"
+      fi
+      ;;
+  esac
 }
 
 # Load and run a z80 program

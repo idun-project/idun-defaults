@@ -663,7 +663,7 @@ pub fn get_uptime() -> Result<String, Error> {
     })?;
 
     let up = stdout.trim_start_matches("up ").trim();
-    Ok(truncate_at_space(up, 35).to_string())
+    Ok(truncate_at_space(up, 32).to_string())
 }
 
 /// Gets the number of installed packages from various package managers.
