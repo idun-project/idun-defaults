@@ -20,6 +20,7 @@ use serde;
 use serde::Deserialize;
 mod util;
 use util::PetString;
+mod c64ultimate;
 
 const LUAPORT: &str          = "/tmp/idunmm-lua";
 
@@ -248,36 +249,40 @@ fn main() -> Result<()> {
 
     // Check for C64-Ultimate commands first, since they circumvent additional processing below.
     if cli.ultimate {
-        // Check that we have access to the web services
-        if let Ok(ip) = std::env::var("C64_ULTIMATE_IP") {
-            match &cli.syscmd {
-                Some(Syscommands::Load { prg }) =>
-                    return ultiload(&ip, prg),
-                Some(Syscommands::Mount { dev, dimage }) =>
-                    return ultimount(&ip, dev, dimage),
-                Some(Syscommands::Drives { dev }) => {
-                    match ultidrv(&ip, dev) {
-                        Ok(ultid) => {
-                            for entry in ultid.drives {
-                                let (drive, settings) = entry.devices.into_iter().next().unwrap();
-                                if drive.len()==1 {     // Just listing a:, b:
-                                    if settings.enabled {
-                                        println!("{}", format!("{}:={}", drive, settings.image_file.unwrap()));
-                                    } else {
-                                        println!("{}", format!("{}:={}", drive, "<Disabled>"));
-                                    }
+        // Check that we have access to the C64 Ultimate web service
+        let ip = match std::env::var("C64_ULTIMATE_IP") {
+            Ok(v) => v,
+            Err(_) => if let Some(detect) = c64ultimate::detect() {
+                detect
+            } else {
+                bail!("C64 Ultimate loads require $C64_ULTIMATE_IP set!")
+            }
+        };
+        match &cli.syscmd {
+            Some(Syscommands::Load { prg }) =>
+                return ultiload(&ip, prg),
+            Some(Syscommands::Mount { dev, dimage }) =>
+                return ultimount(&ip, dev, dimage),
+            Some(Syscommands::Drives { dev }) => {
+                match ultidrv(&ip, dev) {
+                    Ok(ultid) => {
+                        for entry in ultid.drives {
+                            let (drive, settings) = entry.devices.into_iter().next().unwrap();
+                            if drive.len()==1 {     // Just listing a:, b:
+                                if settings.enabled {
+                                    println!("{}", format!("{}:={}", drive, settings.image_file.unwrap()));
+                                } else {
+                                    println!("{}", format!("{}:={}", drive, "<Disabled>"));
                                 }
                             }
-                            return Ok(())
                         }
-                        Err(e) => bail!("C64 Ultimate drive settings Error: {}", e)
+                        return Ok(())
                     }
-                    // Idun virtual drives handled below...
-                },
-                _ => bail!("Command not supported for the C64 Ultimate")
-            }
-        } else {
-            bail!("C64 Ultimate loads require $C64_ULTIMATE_IP set!")
+                    Err(e) => bail!("C64 Ultimate drive settings Error: {}", e)
+                }
+                // Idun virtual drives handled below...
+            },
+            _ => bail!("Command not supported for the C64 Ultimate")
         }
     }
 
