@@ -430,8 +430,13 @@ _ff_last_complete() {
     done
     (( first_nonopt == 0 )) && return
 
-    # Offer the last ff match literally
-    COMPREPLY=("$FF_LAST_MATCH")
+    # Determine the string to insert, quoting if necessary
+    match=$FF_LAST_MATCH
+    if [[ $match == *[[:space:]]* ]]; then
+        # Wrap in single quotes, escaping embedded single quotes
+        match="'${match//\'/\'\\\'\'}'"
+    fi
+    COMPREPLY=("$match")
 }
 complete -F _ff_last_complete run
 complete -F _ff_last_complete show
