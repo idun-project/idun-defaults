@@ -22,20 +22,42 @@
 alias ls='ls --color=auto'
 alias grep='grep --color=auto'
 
-# Alias the idunsh command, optionally including "-o" for output redirect.
-if [[ $(< /proc/$PPID/comm) == "idunio" ]]; then
-  alias idunexec='idunsh -s exec'
-  alias idunmsg='idunsh'
-  alias catalog='idunsh --xarg=p catalog'
-else
-  alias idunexec='idunsh -s -o exec'
-  alias idunmsg='idunsh -o'
-  alias catalog='idunsh -o catalog'
-fi
+# Use append for bash history
+shopt -s histappend
 
-# Aliases for reboot/help
-alias reboot='_mluasend "sys.reboot(0)"'
-alias help='idunsh exec tty l:help.lua $'
+# This routine provides a safe wrapper around idunsh
+idunshell() {
+  history -a
+  exec idunsh "$@" || {
+    echo "idunsh failed to load" >&2
+    return 127
+  }
+}
+
+# This routine wraps exec commands, and redirects output
+# when the command is being run from a standard Linux prompt
+# instead of form within the shell.app.
+idunexec() {
+  if [[ $(< /proc/$PPID/comm) == "idunio" ]]; then
+    idunshell -s exec "$@"
+  else
+    idunsh -s -o exec "$@"
+  fi
+}
+
+# This routine wraps non-exec commands, and redirects output.
+idunmsg() {
+  if [[ $(< /proc/$PPID/comm) == "idunio" ]]; then
+    idunshell "$@"
+  else
+    idunsh -o "$@"
+  fi
+}
+
+# Show command help using Lua program
+help() {
+  idunexec tty l:help.lua $
+}
 
 W='\[\033[37m\]'    # bright white foreground
 G='\[\033[32m\]'    # green foreground
@@ -49,6 +71,8 @@ PS1="${W}\u ${N} ${G}\W ${N}\$ "
 _mluasend() {
     echo "$1" | socat - UNIX-CONNECT:/tmp/idunmm-lua
 }
+# Alias for system reboot
+alias reboot='_mluasend "sys.reboot(0)"'
 
 _fname() {
     local arg="$1"
@@ -62,7 +86,6 @@ _fname() {
     if [[ -f $arg ]]; then
         return 0
     else
-        printf 'Error: File not found\n' >&2
         return 1
     fi
 }
@@ -133,13 +156,13 @@ command_not_found_handle() {
 mlua() {
     # Usage: mlua luafile
     local file="$1"
-    [[ -z "$file" ]] && { idunsh -s exec tty "l:"; return; }
+    [[ -z "$file" ]] && { idunexec tty "l:"; return; }
 
     # Append .lua if not present
     [[ "$file" != *.lua ]] && file="${file}.lua"
 
     # Run the command
-    idunsh -s exec tty "l:${file}"
+    idunexec tty "l:${file}"
 }
 
 # ---------------------------------------------------------------------------
@@ -153,7 +176,7 @@ drives() {
     #      "drives e: ~/projects/goodies"
     # No arguments → show drives
     if [[ $# -eq 0 ]]; then
-        idunmsg -s drives
+        idunmsg drives
         return
     fi
 
@@ -175,7 +198,7 @@ drives() {
     # If trying to mount to a: or b:, then only allow for
     # C64 Ultimate and only if configured with the IP.
     if [[ "$drive" =~ ^[aAbB]:$ ]] && [[ -n $C64_ULTIMATE_IP ]]; then
-        idunmsg -u mount "$drive" "$target"
+        idunsh -u mount "$drive" "$target"
         return
     fi
 
@@ -211,12 +234,29 @@ dir() {
 
     # If argument starts with letter + colon (e.g., C:, Z:)
     if [[ $arg =~ ^[A-Za-z]: ]]; then
-        idunmsg dir "$arg"   # send to idunsh
+        idunmsg -s dir "$arg"
         return $?
     else
         command dir "$arg"  # otherwise call normal dir
         return $?
     fi
+}
+
+# Get a directory of virtual drive using Commodore format
+catalog() {
+  # Usage: catalog <drive>:
+  local arg="$1"
+
+  # If no argument given, then catalog c:
+  if [[ -z $arg ]]; then
+      arg="c:"
+  fi
+
+  if [[ $(< /proc/$PPID/comm) == "idunio" ]]; then
+    idunshell --xarg=p catalog "$arg"
+  else
+    idunsh -o catalog "$arg"
+  fi
 }
 
 # ---------------------------------------------------------------------------
@@ -234,9 +274,11 @@ go() {
   fi
 
   if result=$(_fname "$app"); then
-    idunsh -s go "$app"
+    idunmsg -s go "$app"
   elif [[ -f "${IDUN_SYS_DIR}/sys/${app}" ]]; then
-    idunsh go "z:${app}"
+    idunmsg go "z:${app}"
+  else
+    printf 'Error: File not found\n' >&2
   fi
 }
 
@@ -255,7 +297,7 @@ run() {
   # Check filename is reasonable
   filename=$1
   if ! result=$(_fname "$filename"); then
-    printf 'Usage: run [-u] filename\n' >&2
+    printf 'Error: File not found\n' >&2
     return 2
   fi
 
@@ -265,13 +307,13 @@ run() {
 
   case "$ext" in
     sid|mod|crt)
-      idunsh -u load "$filename"
+      idunmsg -u load "$filename"
       ;;
     *)
       if (( opt_u )); then
-        idunsh -u load "$filename"
+        idunmsg -u load "$filename"
       else
-        idunsh -s load "$filename"
+        idunmsg -s load "$filename"
       fi
       ;;
   esac
@@ -283,7 +325,9 @@ zload() {
   local prg="$1"
   
   if result=$(_fname "$prg"); then
-    idunsh -s exec zload "$prg"
+    idunexec zload "$prg"
+  else
+    printf 'Error: File not found\n' >&2
   fi
 }
 
@@ -344,24 +388,11 @@ show() {
         subcmd="showvdc"
     fi
 
-    # Resolve alias 'idunexec' if it exists, producing the actual command string.
-    # alias output looks like: alias idunexec='idunsh -s -o exec'
-    local idunexec_expansion
-    if alias idunexec >/dev/null 2>&1; then
-        # Extract RHS of alias safely (works with single or double quotes)
-        idunexec_expansion=$(alias idunexec 2>/dev/null | sed -E "s/^alias [^=]+=(['\"]?)(.*)\1$/\2/")
-    fi
-
-    # If no alias found, use literal "idunexec" (it may be an actual command)
-    if [[ -z "$idunexec_expansion" ]]; then
-        idunexec_expansion="idunexec"
-    fi
-
     # Build and run the final command. Use printf '%q' to properly quote arguments.
-    # Example final eval string: idunsh -s -o exec showkoa 'file1.koa' 'file2.koa'
+    # Example final eval string: idunexec showkoa 'file1.koa' 'file2.koa'
     local quoted_args
     quoted_args=$(printf ' %q' "$@")   # leading space included
-    local cmdline="${idunexec_expansion} ${subcmd}${quoted_args}"
+    local cmdline="idunexec ${subcmd}${quoted_args}"
 
     # Execute and preserve exit status
     eval "$cmdline"
