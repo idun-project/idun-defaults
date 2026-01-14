@@ -25,6 +25,9 @@ alias grep='grep --color=auto'
 # Use append for bash history
 shopt -s histappend
 
+# Global variable used with run command
+FF_LAST_MATCH=
+
 # This routine provides a safe wrapper around idunsh
 idunshell() {
   history -a
@@ -75,19 +78,19 @@ _mluasend() {
 alias reboot='_mluasend "sys.reboot(0)"'
 
 _fname() {
-    local arg="$1"
+    local arg=$1
+
+    [[ -z $arg ]] && return 1
 
     # If it begins with a-z or A-Z followed by a colon, return it unchanged
     if [[ $arg =~ ^[A-Za-z]: ]]; then
         return 0
     fi
 
-    # Otherwise, check if it matches a regular file at the given relative path
-    if [[ -f $arg ]]; then
-        return 0
-    else
-        return 1
-    fi
+    # Expand ~ and normalize
+    arg=${arg/#\~/$HOME}
+
+    [[ -f "$arg" ]]
 }
 
 _toolhdr() {
@@ -411,6 +414,29 @@ basic() {
     _mluasend "sys.reboot(${sys})"
 }
 
+# Add <TAB> filename completion. The filename comes from the last
+# result of the ff (find file) command.
+_ff_last_complete() {
+    local cur
+    cur=${COMP_WORDS[COMP_CWORD]}
+
+    # Only offer completion if we have a last ff match
+    [[ -n $FF_LAST_MATCH ]] || return
+
+    # Only complete the first non-option argument
+    local first_nonopt=1
+    for ((i=1; i<COMP_CWORD; i++)); do
+        [[ ${COMP_WORDS[i]} != -* ]] && first_nonopt=0
+    done
+    (( first_nonopt == 0 )) && return
+
+    # Offer the last ff match literally
+    COMPREPLY=("$FF_LAST_MATCH")
+}
+complete -F _ff_last_complete run
+complete -F _ff_last_complete show
+complete -F _ff_last_complete zload
+
 # lightweight non-interactive fzf helpers for bash
 # Requires: fzf, fd (https://github.com/sharkdp/fd)
 
@@ -489,8 +515,31 @@ fcd() {
 ff() {
   # Usage: ff pattern
   local pattern="$1"
+  local abs match rel
+
   _ensure_cache
-  _fzf_filter "$pattern" < "$FZF_LITE_FILE_CACHE" | head -n1
+
+  # Get absolute path first
+  abs=$(_fzf_filter "$pattern" < "$FZF_LITE_FILE_CACHE" | head -n1) || return
+
+  # Strip trailing whitespace
+  abs=${abs//$'\r'/}
+  abs=${abs//$'\n'/}
+  abs=${abs//$'\t'/}
+
+  # Convert to relative path if inside $PWD
+  if [[ $abs == "$PWD"* ]]; then
+    rel=${abs#$PWD/}
+  else
+    # fallback: leave as absolute if outside PWD
+    rel=$abs
+  fi
+
+  # Store the relative path for later
+  FF_LAST_MATCH=$rel
+
+  # Print relative path
+  printf '%s\n' "$rel"
 }
 
 # ---------------------------------------------------------------------------
