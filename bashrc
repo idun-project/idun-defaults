@@ -310,11 +310,11 @@ run() {
 
   case "$ext" in
     sid|mod|crt)
-      idunmsg -u load "$filename"
+      idunsh -u load "$filename"
       ;;
     *)
       if (( opt_u )); then
-        idunmsg -u load "$filename"
+        idunsh -u load "$filename"
       else
         idunmsg -s load "$filename"
       fi

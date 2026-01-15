@@ -1,26 +1,23 @@
 #[macro_use] extern crate failure;
 
-use std::collections::HashMap;
 use std::env;
 use std::result;
 use std::process;
 use std::fs;
 use std::str;
 use std::thread;
-use std::io;
 use std::time::Duration;
 use bstr::BString;
 use nix::unistd;
 use std::path::Path;
 use std::io::{Read, Write, stdout};
 use std::os::unix::net::{UnixListener, UnixStream};
-use clap::{Parser,Subcommand};
-use ureq;
-use serde;
-use serde::Deserialize;
+use clap::{Parser,Subcommand,ArgGroup};
+use shell_words::split;
 mod util;
 use util::PetString;
 mod c64ultimate;
+use c64ultimate::C64Ultimate;
 
 const LUAPORT: &str          = "/tmp/idunmm-lua";
 
@@ -35,10 +32,12 @@ const MOUNT_CMD: u8     = 6;
 const ASSIGN_CMD: u8    = 7;
 
 #[derive(Parser)]
-#[command(version, about, long_about=None, arg_required_else_help=true)]
+#[command(version, about, long_about=None, arg_required_else_help=true,
+    group(
+        ArgGroup::new("command").required(true).args(&["cmd", "rest"])
+    )
+)]
 struct Cli {
-    #[command(subcommand)]
-    syscmd: Option<Syscommands>,
     #[arg(short)]
     /// Synchronize idun shell current directory with linux
     syncdir: bool,
@@ -51,9 +50,21 @@ struct Cli {
     #[arg(short, long, value_name="flags")]
     /// Add flag arguments to the command
     xarg: Option<String>,
+    #[arg(short, long, value_name="cmdline")]
+    /// Pass sub-command as a single argument (for shell wrappers)
+    cmd: Option<String>,
+    #[arg(trailing_var_arg=true, value_name="COMMAND", help="Subcommand with arguments")]
+    /// Pass sub-command as additional args (for normal CLI usage)
+    rest: Vec<String>,
     // TODO: Run idunsh in interactive mode
     // #[arg(short)]
     // interactive: bool,
+}
+
+#[derive(Parser)]
+struct Syscommand {
+    #[command(subcommand)]
+    cmd: Syscommands,
 }
 
 #[derive(Subcommand)]
@@ -62,6 +73,8 @@ enum Syscommands {
     Go { app:String},
     /// Launch a native program on the Commodore
     Load { prg:String },
+    /// Launch content on the C64 Ultimate
+    Run { prg:String },
     /// Execute remote idun command/program with arguments
     Exec { cmd:String, args: Vec<String> },
     /// Get file list from Idun device using short format
@@ -79,31 +92,25 @@ enum Syscommands {
     /// Stop a running program (sends "STOP" key)
     Stop,
 }
+fn parse_sys_command(cli: &Cli) -> Syscommand {
+    let mut argv = vec!["idunsh".to_string()];
+
+    if let Some(cmdline) = &cli.cmd {
+        argv.extend(
+            split(&cmdline).unwrap_or_else(|e| {
+                eprintln!("Invalid --cmd syntax: {e}");
+                std::process::exit(2);
+            }),
+        );
+    } else {
+        argv.extend(cli.rest.clone());
+    }
+
+    Syscommand::parse_from(argv)
+}
 
 // Simpler error handling
 type Result<T> = result::Result<T, failure::Error>;
-
-/// Types used for deserializing the C64 Ultimate Drives
-#[allow(dead_code)]
-#[derive(Deserialize)]
-struct Device {
-    enabled: bool,
-    bus_id: u8,
-    #[serde(rename = "type")]
-    device_type: Option<String>, // not all devices have it
-    rom: Option<String>,
-    image_file: Option<String>,
-    image_path: Option<String>,
-}
-#[derive(Deserialize)]
-struct DriveEntry {
-    #[serde(flatten)]
-    devices: HashMap<String, Device>,
-}
-#[derive(Deserialize)]
-struct UltiDrives {
-    drives: Vec<DriveEntry>,
-}
 
 fn luasend(message: String) -> Result<()> {
     let mut s = UnixStream::connect(LUAPORT)?;
@@ -134,137 +141,29 @@ fn reboot_cmd(mode: u8) -> Result<()> {
     luasend(cmd)
 }
 
-fn post(ip: &String, url: &String, file: &String) -> io::Result<()> {
-    let path = Path::new(file);
-    let mut buf: Vec<u8> = vec![];
-    fs::File::open(path)?.read_to_end(&mut buf)?;
-    
-    let mut req = String::from("http://");
-    req.push_str(ip);
-    req.push_str(url);
-
-    ureq::post(req)
-        .send(buf)
-        .map(|_| ())
-        .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))
-}
-
-fn meta(filename: &str) -> io::Result<(u64, u16)> {
-    let path = Path::new(filename);
-
-    // Open file
-    let mut file = fs::File::open(path)?;
-
-    // Get file size
-    let size = file.metadata()?.len();
-
-    // Read first 2 bytes
-    let mut buf = [0u8; 2];
-    file.read_exact(&mut buf)?;
-
-    // Convert to little-endian u16
-    let addr = u16::from_le_bytes(buf);
-
-    Ok((size, addr))
-}
-
-fn ultiload(ip: &String, filenm: &String) -> Result<()> {
-    let url: Option<String>;
-    let lcase = filenm.to_lowercase();
-    let ext = Path::new(&lcase)
-                            .extension()
-                            .and_then(|s| s.to_str());
-    let (size, start) = meta(filenm)?;
-
-    if ext == None {
-        if (size + (start as u64)) < 65536 {
-            url = Some(String::from("/v1/runners:run_prg"));
-        } else {
-            bail!("PRG file is too large")
-        }
-    } else {
-        url = match ext.unwrap() {
-            "crt" => Some(String::from("/v1/runners:run_crt")),
-            "sid" => Some(String::from("/v1/runners:sidplay")),
-            "mod" => Some(String::from("/v1/runners:modplay")),
-            "prg" => if (size + (start as u64)) < 65536 {
-                Some(String::from("/v1/runners:run_prg"))
-            } else {
-                bail!("PRG file is too large")
-            }
-            _ => None,
-        };
-    }
-    
-    if let Some(u) = url {
-        match post(ip, &u, filenm) {
-            Ok(_) => Ok(()),
-            Err(e) => {
-                println!("Error: {}", e);
-                bail!("C64 Ultimate web request fail: {}{}", ip, u)
-            }
-        }
-    } else {
-        bail!("File extension not recognized")
-    }
-}
-
-fn ultimount(ip: &String, device: &String, dimage: &String) -> Result<()> {
-    let lcase = dimage.to_lowercase();
-    let ext = Path::new(&lcase)
-                            .extension()
-                            .and_then(|s| s.to_str());
-
-    // Disk image name must have a recognized file extension
-    if ext.is_none() { bail!("Unrecognized disk image file type/") }
-    let url = match ext.unwrap() {
-        "d64" | "g64" | "d71" | "g71" | "d81" => {
-            format!("/v1/drives/{}mount?type={}", device, ext.unwrap())
-        },
-        _ => bail!("Unrecognized disk image file type/")
-    };
-
-    match post(ip, &url, dimage) {
-        Ok(_) => Ok(()),
-        Err(e) => {
-            println!("Error: {}", e);
-            bail!("C64 Ultimate web request fail: {}{}", ip, &url)
-        }
-    }
-}
-
-fn ultidrv(ip: &String, _device: &Option<String>) -> io::Result<UltiDrives> {
-    let url = format!("http://{}/v1/drives", ip);
-    let mut resp = ureq::get(&url)
-        .call()
-        .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
-    resp.body_mut()
-        .read_json::<UltiDrives>()
-        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e.to_string()))
-}
-
 fn main() -> Result<()> {
     let cli = Cli::parse();
     let mut xargs = String::new();
 
-    // Check for C64-Ultimate commands first, since they circumvent additional processing below.
-    if cli.ultimate {
+    // Extract the sub-command
+    let syscmd = parse_sys_command(&cli);
+
+    // Check for C64-Ultimate commands first, since they circumvent chrir and redirect processing
+    if cli.ultimate || matches!(syscmd.cmd, Syscommands::Run{..}) {
         // Check that we have access to the C64 Ultimate web service
-        let ip = match std::env::var("C64_ULTIMATE_IP") {
-            Ok(v) => v,
-            Err(_) => if let Some(detect) = c64ultimate::detect() {
-                detect
-            } else {
-                bail!("C64 Ultimate loads require $C64_ULTIMATE_IP set!")
-            }
-        };
-        match &cli.syscmd {
-            Some(Syscommands::Load { prg }) =>
-                return ultiload(&ip, prg),
-            Some(Syscommands::Mount { dev, dimage }) =>
-                return ultimount(&ip, dev, dimage),
-            Some(Syscommands::Drives { dev }) => {
-                match ultidrv(&ip, dev) {
+        let c64u = C64Ultimate::new();
+        if c64u.ip().is_none() {
+            bail!("C64 Ultimate loads require $C64_ULTIMATE_IP set!")
+        }
+
+        match syscmd.cmd {
+            Syscommands::Load { prg } |
+            Syscommands::Run  { prg } =>
+                return c64u.load(&prg),
+            Syscommands::Mount { dev, dimage } =>
+                return c64u.mount(&dev, &dimage),
+            Syscommands::Drives { dev } => {
+                match c64u.getdrv(&dev) {
                     Ok(ultid) => {
                         for entry in ultid.drives {
                             let (drive, settings) = entry.devices.into_iter().next().unwrap();
@@ -340,33 +239,33 @@ fn main() -> Result<()> {
     let proc = if ojoin.is_some() {process::id()} else {0};
 
     // Handle commands
-    match &cli.syscmd {
-        Some(Syscommands::Go { app }) => return shell(GO_CMD, app, 0),
-        Some(Syscommands::Load { prg }) => return shell(LOAD_CMD, prg, 0),
-        Some(Syscommands::Reboot) => return reboot_cmd(0),
-        Some(Syscommands::Stop)   => return stop_cmd(),
-        Some(Syscommands::Dir { dev }) => shell(DIR_CMD, dev, proc)?,
-        Some(Syscommands::Catalog { dev }) => {
+    match syscmd.cmd {
+        Syscommands::Go { app } => return shell(GO_CMD, &app, 0),
+        Syscommands::Load { prg } => return shell(LOAD_CMD, &prg, 0),
+        Syscommands::Reboot => return reboot_cmd(0),
+        Syscommands::Stop   => return stop_cmd(),
+        Syscommands::Dir { dev } => shell(DIR_CMD, &dev, proc)?,
+        Syscommands::Catalog { dev } => {
             let argstr = format!("{}{}", xargs, dev);
             shell(CATALOG_CMD, &argstr, proc)?
         },
-        Some(Syscommands::Drives { dev}) => {
+        Syscommands::Drives { dev} => {
             let argstr = dev.clone().unwrap_or_default();
             shell(DRIVES_CMD, &argstr, proc)?
         },
-        Some(Syscommands::Mount { dev, dimage }) => {
+        Syscommands::Mount { dev, dimage } => {
             let mut argstr = String::from(dev);
             argstr.push(' ');
-            argstr.push_str(dimage);
+            argstr.push_str(&dimage);
             shell(MOUNT_CMD, &argstr, proc)?
         }
-        Some(Syscommands::Assign { dev, path }) => {
+        Syscommands::Assign { dev, path } => {
             let mut argstr = String::from(dev);
             argstr.push(' ');
-            argstr.push_str(path);
+            argstr.push_str(&path);
             shell(ASSIGN_CMD, &argstr, proc)?
         }
-        Some(Syscommands::Exec { cmd, args}) =>
+        Syscommands::Exec { cmd, args} =>
         {
             let argstr = args.join(" ");
             let mut exe = cmd.to_owned();
@@ -376,7 +275,7 @@ fn main() -> Result<()> {
             exe.push_str(&argstr);
             shell(EXEC_CMD, &exe, proc)?
         },
-        None => return Ok(())
+        Syscommands::Run { .. } => return Ok(()),   //not used, handled above
     }
     
     // Rejoin thread
