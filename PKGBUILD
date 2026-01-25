@@ -6,7 +6,7 @@ arch=("aarch64" "armv7h")
 url="https://github.com/idun-project/idun-defaults"
 depends=(fd)
 makedepends=(rustup)
-provides=(idun-defaults)
+replaces=('idun<1.2.2')
 source=(ffetch idunsh)
 install="config.install"
 
