@@ -192,7 +192,7 @@ fn main() -> Result<()> {
 
         luasend(cmd)?;
         // TESTING - pause here to allow first NMI to complete
-        thread::sleep(Duration::from_millis(250));
+        thread::sleep(Duration::from_millis(500));
     }
     if let Some(flags)=cli.xarg {
         // Create a switch style flag for each of the characters in xarg.
