@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Brian Holdsworth
+
 //! # FFetch - Fast System Information Fetcher
 //!
 //! A lightweight and fast system information library for Linux systems.

@@ -1,0 +1,289 @@
+#!/bin/bash
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Brian Holdsworth
+
+set -euo pipefail
+
+SCRIPT_NAME="wifi"
+CACHE_DIR="$HOME/.cache/wifi.sh"
+GPG_OPTS="--quiet --batch"
+CONNMANCTL="$(command -v connmanctl)"
+
+mkdir -p "$CACHE_DIR"
+chmod 700 "$CACHE_DIR"
+
+die() {
+    echo "[$SCRIPT_NAME] ERROR: $*" >&2
+    exit 1
+}
+
+info() {
+    echo "[$SCRIPT_NAME] $*"
+}
+
+require_connman() {
+    [[ -x "$CONNMANCTL" ]] || die "connmanctl not found"
+    systemctl is-active --quiet connman || die "connman service not running"
+}
+
+wifi_off() {
+    require_connman
+	# Target only 'wifi' services that are either:
+	# R (Ready), O (Online), or C (Connected)
+	CURRENT_WIFI=$(connmanctl services | grep 'wifi' | grep -E '^\*.[ROC]' | awk '{print $NF}')
+	
+	if [ -n "$CURRENT_WIFI" ]; then
+	    echo "Disconnecting from Wi-Fi: $CURRENT_WIFI"
+	    connmanctl disconnect "$CURRENT_WIFI"
+	else
+	    echo "No active Wi-Fi connection found."
+	fi
+}
+
+wait_for_wifi_ready() {
+    info "Waiting for WiFi hardware..."
+
+    # Ensure WiFi technology is powered on
+    connmanctl technologies | grep -A3 "Type = wifi" | grep -q "Powered = True" || {
+        info "Powering WiFi radio..."
+        connmanctl enable wifi >/dev/null 2>&1 || true
+    }
+
+    # Wait until Powered = True
+    local i
+    for ((i=0; i<20; i++)); do
+        if connmanctl technologies | grep -A3 "Type = wifi" | grep -q "Powered = True"; then
+            return 0
+        fi
+        sleep 0.5
+    done
+
+    die "WiFi hardware did not power on"
+}
+
+scan_wifi_with_retry() {
+    info "Scanning for WiFi networks..."
+
+    local i
+    for ((i=0; i<10; i++)); do
+        if connmanctl scan wifi >/dev/null 2>&1; then
+            return 0
+        fi
+        sleep 1
+    done
+
+    die "WiFi scan failed (still reporting 'No carrier')"
+}
+
+wifi_on() {
+	# Force a scan to ensure the list is fresh
+	scan_wifi_with_retry
+
+	# Find the first 'Favorite' service (marked with *) that isn't currently connected
+	# We look for the line starting with '*' but without 'O' (Online) or 'C' (Connected)
+	LAST_SERVICE=$(connmanctl services | grep '^\*' | grep -vE '\*.[OC]' | head -n 1 | awk '{print $NF}')
+
+	if [ -z "$LAST_SERVICE" ]; then
+	    echo "No disconnected Favorite services found. Are you already connected?"
+	    exit 1
+	fi
+
+	echo "Attempting to reconnect to: $LAST_SERVICE"
+	connmanctl connect "$LAST_SERVICE"
+}
+
+# --- TUI helpers -------------------------------------------------------------
+
+clear_screen() {
+    printf '\033[2J\033[H'
+}
+
+pause() {
+    read -rp "Press ENTER to continue..."
+}
+
+select_menu() {
+    local prompt="$1"; shift
+    local options=("$@")
+
+    clear_screen >&2
+    echo "$prompt" >&2
+    echo >&2
+
+    local i=1
+    for opt in "${options[@]}"; do
+        printf "  [%d] %s\n" "$i" "$opt" >&2
+        ((i++))
+    done
+
+    echo >&2
+    while true; do
+        read -rp "Select number: " sel >&2
+        [[ "$sel" =~ ^[0-9]+$ ]] || continue
+        (( sel >= 1 && sel <= ${#options[@]} )) && break
+    done
+
+    echo "$((sel-1))"
+}
+
+# --- Interactive connect -----------------------------------------------------
+
+get_password() {
+    local prompt="$1"
+    local char
+    pass=""
+    
+    echo -n "$prompt"
+    
+    # Read one character at a time (-n 1) silently (-s)
+    while IFS= read -r -s -n 1 char; do
+        # If user presses Enter (empty char), break the loop
+        if [[ -z "$char" ]]; then
+            echo ""
+            break
+        fi
+        
+        # Handle Backspace (ASCII 127)
+        if [[ "$char" == $'\177' ]]; then
+            if [ ${#pass} -gt 0 ]; then
+                pass="${pass%?}" # Remove last char from variable
+                echo -ne "\b \b" # Move back, print space, move back again
+            fi
+        else
+            pass+="$char"
+            echo -n "*"
+        fi
+    done
+}
+
+wifi_setup() {
+    # Ensure script is run as root
+    if [ "$EUID" -ne 0 ]; then 
+        echo "Please run as root (sudo)"
+        exit 1
+    fi
+
+    wait_for_wifi_ready
+	scan_wifi_with_retry
+
+    local MENU=()
+    local IDS=()
+    while IFS= read -r line; do
+        # Extract the Service ID (everything from wifi_ to the end)
+        id=$(echo "$line" | grep -o 'wifi_.*')
+        
+        # Extract the Name (SSID) using our previous logic
+        name=$(echo "$line" | sed 's/^....//; s/[[:space:]]\+wifi_.*$//')
+
+        [[ -z "$name" ]] && name="(hidden network)"
+
+        MENU+=("$name")
+        IDS+=("$id") # Store the real ID for later
+    done < <(connmanctl services | grep wifi_ || true)
+
+    idx="$(select_menu "Available WiFi networks:" "${MENU[@]}")"
+    ssid="${MENU[$idx]}"
+    servid="${IDS[$idx]}"
+
+    get_password "WiFi password: "
+
+    # Generate a unique filename based on the SSID
+    CONFIG_FILE="/var/lib/connman/${ssid// /_}.config"
+
+    echo "Provisioning $ssid..."
+    cat <<EOF > "$CONFIG_FILE"
+[service_${servid}]
+Type = wifi
+Name = $ssid
+Passphrase = $pass
+EOF
+
+    # Correct permissions for ConnMan
+    chmod 600 "$CONFIG_FILE"
+    sleep 2
+
+    # Connect
+    # Check if it's already connecting (to avoid 'In Progress')
+    STATE=$(connmanctl services "$servid" | awk '/State =/ {print $3}')
+    if [[ "$STATE" == "association" || "$STATE" == "configuration" ]]; then
+        info "Connection already in progress... waiting."
+    else
+    	info "Connecting..."
+        connmanctl connect "$servid"
+    fi
+}
+
+wifi_status() {
+    echo "[$SCRIPT_NAME] WiFi status:"
+    echo
+
+    local state
+    state="$(connmanctl state | awk '/State =/ {print $3}')"
+    echo "  State:        $state"
+
+    # 1. Find the active WiFi service line
+    local line
+    line="$(connmanctl services | grep 'wifi_' | grep -E '^\*.[RO]' | head -n 1)"
+
+    if [[ -z "$line" ]]; then
+        echo "  Access Point: (not connected)"
+        echo "  IP Address:   (none)"
+        return
+    fi
+
+    # 2. Extract the Access Point name
+    local ap
+    ap=$(echo "$line" | sed 's/^....//; s/[[:space:]]\+wifi_.*$//')
+    echo "  Access Point: $ap"
+
+    # 3. Get the IP address using 'ip'
+    # We look for the interface that is UP and not the loopback (lo) or ethernet (eth/en)
+    # Most reliable: find the interface associated with the default gateway
+    local interface
+    interface=$(ip route get 1.1.1.1 2>/dev/null | grep -oP 'dev \K\S+')
+
+    # If the above fails (no internet), we guess by looking for wireless interfaces
+    if [[ -z "$interface" ]]; then
+        interface=$(ls /sys/class/net | grep -E '^wl' | head -n 1)
+    fi
+
+    local ip
+    ip=$(ip -4 addr show "$interface" | awk '/inet / {print $2}' | cut -d/ -f1)
+
+    if [[ -n "$ip" ]]; then
+        echo "  IP Address:   $ip ($interface)"
+    else
+        echo "  IP Address:   (pending/none)"
+    fi
+}
+
+# --- Main --------------------------------------------------------------------
+
+require_connman
+
+case "${1:-}" in
+    off)
+        wifi_off
+        ;;
+    on)
+        wifi_on
+        ;;
+    setup)
+        wifi_setup
+        ;;
+    status)
+        wifi_status
+        ;;
+    *)
+        cat <<EOF
+Usage: $SCRIPT_NAME {on|off|setup|status}
+
+  setup   Setup WiFi for the first time
+  status  Show WiFi connection status
+  off     Disconnect WiFi network
+  on      Connect to previous WiFi network
+EOF
+        exit 1
+        ;;
+esac
+

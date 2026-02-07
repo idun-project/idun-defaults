@@ -1,6 +1,6 @@
 pkgname=idun-defaults
 pkgver=1.0
-pkgrel=1
+pkgrel=2
 pkgdesc="Idun default configuration files"
 arch=("aarch64" "armv7h")
 url="https://github.com/idun-project/idun-defaults"
@@ -24,4 +24,5 @@ package() {
   install -m 644 ../bashrc "${pkgdir}"/etc/xdg/idun/bashrc
   install -m 644 ../newshell "${pkgdir}"/etc/xdg/idun/newshell
   install -m 644 ../Idun_c64u_run_first.cfg "${pkgdir}"/etc/xdg/idun/Idun_c64u_run_first.cfg
+  install -m 755 ../wifi "${pkgdir}"/usr/bin/wifi
 }

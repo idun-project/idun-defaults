@@ -64,7 +64,7 @@ echo fg.blue "Machine: " fg.white t.bold getMachine
 echo fg.blue "Distro: " fg.white t.bold getOsName
 echo fg.blue "Kernel: " fg.white t.bold getKernel
 echo fg.blue "Disk: " fg.white t.bold getDisk(/)
-echo fg.blue "Memory: " fg.white t.bold getMemory " MB"
+echo fg.blue "Memory: " fg.white t.bold getMemory
 echo fg.blue "Board: " fg.white t.bold getBoardName
 echo fg.blue "CPU: " fg.white t.bold getCpu
 echo fg.blue "Packages: " fg.white t.bold getPackages

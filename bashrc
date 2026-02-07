@@ -1,4 +1,7 @@
 #!/bin/bash
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Brian Holdsworth
+#
 # Idun's default .bashrc, Copyright© 2025 Brian Holdsworth
 # This is free software, released under the MIT License.
 #

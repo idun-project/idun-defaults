@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Brian Holdsworth
 #[macro_use] extern crate failure;
 
 use std::env;
