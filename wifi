@@ -5,12 +5,7 @@
 set -euo pipefail
 
 SCRIPT_NAME="wifi"
-CACHE_DIR="$HOME/.cache/wifi.sh"
-GPG_OPTS="--quiet --batch"
 CONNMANCTL="$(command -v connmanctl)"
-
-mkdir -p "$CACHE_DIR"
-chmod 700 "$CACHE_DIR"
 
 die() {
     echo "[$SCRIPT_NAME] ERROR: $*" >&2
