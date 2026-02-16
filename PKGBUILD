@@ -1,6 +1,6 @@
 pkgname=idun-defaults
 pkgver=1.0
-pkgrel=2
+pkgrel=3
 pkgdesc="Idun default configuration files"
 arch=("aarch64" "armv7h")
 url="https://github.com/idun-project/idun-defaults"

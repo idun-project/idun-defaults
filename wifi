@@ -57,17 +57,21 @@ wait_for_wifi_ready() {
 }
 
 scan_wifi_with_retry() {
-    info "Scanning for WiFi networks..."
+    info "Initiating WiFi scan..."
+    
+    # Trigger the scan once
+    connmanctl scan wifi >/dev/null 2>&1
 
     local i
-    for ((i=0; i<10; i++)); do
-        if connmanctl scan wifi >/dev/null 2>&1; then
+    for ((i=0; i<15; i++)); do
+        # Check if 'services' returns any lines containing 'wifi_'
+        if connmanctl services | grep -q "wifi_"; then
             return 0
         fi
         sleep 1
     done
 
-    die "WiFi scan failed (still reporting 'No carrier')"
+    die "WiFi scan timed out: No networks found."
 }
 
 wifi_on() {
@@ -159,32 +163,44 @@ wifi_setup() {
     fi
 
     wait_for_wifi_ready
-	scan_wifi_with_retry
+    scan_wifi_with_retry
 
     local MENU=()
     local IDS=()
+    # Loop through services
     while IFS= read -r line; do
-        # Extract the Service ID (everything from wifi_ to the end)
-        id=$(echo "$line" | grep -o 'wifi_.*')
-        
-        # Extract the Name (SSID) using our previous logic
-        name=$(echo "$line" | sed 's/^....//; s/[[:space:]]\+wifi_.*$//')
+        # Extract the Service ID
+        local id=$(echo "$line" | grep -o 'wifi_.*')
+        [[ -z "$id" ]] && continue
 
+        # Extract the Name (SSID)
+        local name=$(echo "$line" | sed 's/^....//; s/[[:space:]]\+wifi_.*$//')
         [[ -z "$name" ]] && name="(hidden network)"
 
-        MENU+=("$name")
-        IDS+=("$id") # Store the real ID for later
-    done < <(connmanctl services | grep wifi_ || true)
+        # Fetch the signal strength for this specific ID
+        # We use awk to grab the 3rd column of the 'Strength' line
+        local strength=$(connmanctl services "$id" | awk '/Strength =/ {print $3}')
+        [[ -z "$strength" ]] && strength="0"
 
-    idx="$(select_menu "Available WiFi networks:" "${MENU[@]}")"
-    ssid="${MENU[$idx]}"
+        # Format the menu entry: "Name [Strength%]"
+        MENU+=("$name [$strength%]")
+        IDS+=("$id") 
+    done < <(connmanctl services | grep wifi_)
+
+    if [ ${#MENU[@]} -eq 0 ]; then
+        die "No WiFi networks found."
+    fi
+
+    idx="$(select_menu "Available WiFi networks (Sorted by Strength):" "${MENU[@]}")"
+    
+    # Extract the original SSID (stripping the [XX%] suffix)
+    # or just use the index to get the raw name if you stored it
+    ssid=$(echo "${MENU[$idx]}" | sed 's/ \[[0-9]\+%\]$//')
     servid="${IDS[$idx]}"
 
-    get_password "WiFi password: "
+    get_password "WiFi password for $ssid: "
 
-    # Generate a unique filename based on the SSID
     CONFIG_FILE="/var/lib/connman/${ssid// /_}.config"
-
     echo "Provisioning $ssid..."
     cat <<EOF > "$CONFIG_FILE"
 [service_${servid}]
@@ -193,12 +209,9 @@ Name = $ssid
 Passphrase = $pass
 EOF
 
-    # Correct permissions for ConnMan
     chmod 600 "$CONFIG_FILE"
     sleep 2
 
-    # Connect
-    # Check if it's already connecting (to avoid 'In Progress')
     STATE=$(connmanctl services "$servid" | awk '/State =/ {print $3}')
     if [[ "$STATE" == "association" || "$STATE" == "configuration" ]]; then
         info "Connection already in progress... waiting."
