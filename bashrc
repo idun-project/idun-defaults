@@ -351,7 +351,6 @@ show() {
         return 1
     fi
 
-    local allowed_koa="koa" allowed_scr="scr" allowed_vdc="vdc"
     local ext
     local uniq_exts=()   # unique recognized extensions among args (.koa/.scr/.vdc)
     local saw_other=0    # set if an argument has no extension or an unrecognized extension
@@ -394,15 +393,8 @@ show() {
         subcmd="showvdc"
     fi
 
-    # Build and run the final command. Use printf '%q' to properly quote arguments.
-    # Example final eval string: idunexec showkoa 'file1.koa' 'file2.koa'
-    local quoted_args
-    quoted_args=$(printf ' %q' "$@")   # leading space included
-    local cmdline="idunexec ${subcmd}${quoted_args}"
-
-    # Execute and preserve exit status
-    eval "$cmdline"
-    return $?
+    idunexec "$subcmd" "$@"
+    return 127
 }
 
 # Restart cartridge in BASIC mode
