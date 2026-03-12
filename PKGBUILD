@@ -18,8 +18,8 @@ build() {
 }
 
 package() {
-  install -D -m 755 ../ffetch/target/arm-unknown-linux-gnueabihf/release/ffetch "${pkgdir}"/usr/bin/ffetch
-  install -D -m 755 ../idunsh/target/arm-unknown-linux-gnueabihf/release/idunsh "${pkgdir}"/usr/bin/idunsh
+  install -D -m 755 ../target/arm-unknown-linux-gnueabihf/release/ffetch "${pkgdir}"/usr/bin/ffetch
+  install -D -m 755 ../target/arm-unknown-linux-gnueabihf/release/idunsh "${pkgdir}"/usr/bin/idunsh
   install -D -m 644 ../idunrc.toml "${pkgdir}"/etc/xdg/idun/idunrc.toml
   install -m 644 ../bashrc "${pkgdir}"/etc/xdg/idun/bashrc
   install -m 644 ../newshell "${pkgdir}"/etc/xdg/idun/newshell
