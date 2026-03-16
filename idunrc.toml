@@ -43,8 +43,8 @@ devices = [
 	{id="I", type=2},
 	# J: USB gamepads (type 2)
 	{id="J", type=2},
-	# K: keyboard (type 2)
-	{id="K", type=2, addr=0, cmd=0, flags=0},
+	# K: unused
+	{id="K", type=255},
 	# L: Lua Programming Console Tty (type 6)
 	{id="L", type=6, cmd=31},
 	# M: Virtual modem/telnet client Tty (type 6)
