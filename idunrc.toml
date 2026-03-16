@@ -13,7 +13,7 @@
 # 8-bit flags value for simulated disks (Type 4/7):
 # --dcrush where d=support file delete
 #				 c=support change path
-#                r=support file rename
+#				 r=support file rename
 #				 u=user specified default path
 #				 s=idun system path is default
 #				 h=user home path is default
@@ -43,8 +43,8 @@ devices = [
 	{id="I", type=2},
 	# J: USB gamepads (type 2)
 	{id="J", type=2},
-	# K: unused
-	{id="K", type=255},
+	# K: Keyboard
+	{id="K", type=2, addr=1},
 	# L: Lua Programming Console Tty (type 6)
 	{id="L", type=6, cmd=31},
 	# M: Virtual modem/telnet client Tty (type 6)
