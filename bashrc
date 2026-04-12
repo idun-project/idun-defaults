@@ -65,7 +65,7 @@ idunmsg() {
 
 # Show command help using Lua program
 help() {
-  idunexec tty l:help.lua $
+  idunsh exec tty l:help.lua $
 }
 
 W='\[\033[37m\]'    # bright white foreground
