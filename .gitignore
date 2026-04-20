@@ -1,2 +1,3 @@
 target/
 *.pkg.tar.z*
+*.tar.gz
