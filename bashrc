@@ -163,15 +163,17 @@ command_not_found_handle() {
 
 # Run a Lua script through Idun's integral Lua interpreter
 mlua() {
-    # Usage: mlua luafile
+    # Usage: mlua luafile [args...]
     local file="$1"
+    shift  # remove the filename, leave the rest in "$@"
+
     [[ -z "$file" ]] && { idunexec tty "l:"; return; }
 
     # Append .lua if not present
     [[ "$file" != *.lua ]] && file="${file}.lua"
 
-    # Run the command
-    idunexec tty "l:${file}"
+    # Run the command, preserving all arguments
+    idunexec tty "l:${file} $*"
 }
 
 # ---------------------------------------------------------------------------
