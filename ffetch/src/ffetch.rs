@@ -312,17 +312,11 @@ pub fn qt_theme() -> String {
         .unwrap_or_else(|_| "QT_QPA_PLATFORMTHEME variable is not setting up".to_string())
 }
 
-/// Gets the CPU name from `/proc/cpuinfo`.
-///
-/// Reads the CPU model name from the fifth line of `/proc/cpuinfo`.
+/// Gets the CPU architecture name from `uname -m`.
 ///
 /// # Returns
 ///
-/// Returns a `String` containing the CPU model name.
-///
-/// # Panics
-///
-/// Panics if `/proc/cpuinfo` cannot be read (non-Linux systems).
+/// Returns a `String` containing the CPU arch name.
 ///
 /// # Examples
 ///
@@ -331,31 +325,26 @@ pub fn qt_theme() -> String {
 ///
 /// let cpu = get_cpu_name();
 /// println!("CPU: {}", cpu);
-/// // Output: CPU: Intel(R) Core(TM) i7-8750H CPU @ 2.20GHz
+/// // Output: CPU: x86_64
 /// ```
 pub fn get_cpu_name() -> Result<String, Error> {
-    let contents = read_to_string("/proc/cpuinfo").map_err(|e| {
+    let output = Command::new("uname")
+        .arg("-m")
+        .output()
+        .map_err(|e| Error::new(e.kind(), "Failed to execute 'uname -m' command"))?;
+
+    if !output.status.success() {
+        return Err(Error::other("'uname -m' command exited with error"));
+    }
+
+    let stdout = String::from_utf8(output.stdout).map_err(|_| {
         Error::new(
-            e.kind(),
-            "Failed to read /proc/cpuinfo. Are you running Linux?",
+            ErrorKind::InvalidData,
+            "Failed to parse output of 'uname -m' as UTF-8",
         )
     })?;
 
-    for line in contents.lines() {
-        if line.starts_with("model name") {
-            if let Some(cpu) = line.split(':').nth(1) {
-                let name = cpu.trim();
-                if !name.is_empty() {
-                    return Ok(truncate_at_space(name, 35).to_string());
-                }
-            }
-        }
-    }
-
-    Err(Error::new(
-        ErrorKind::NotFound,
-        "Could not find 'model name' in /proc/cpuinfo.",
-    ))
+    Ok(stdout.trim().to_string())
 }
 
 /// Gets memory usage information from `/proc/meminfo`.
@@ -805,6 +794,21 @@ pub fn get_packages() -> Result<String, Error> {
         Ok(count)
     }
 
+	fn count_apk() -> Result<usize, Error> {
+	    let file = File::open("/lib/apk/db/installed")
+	        .map_err(|e| Error::new(e.kind(), "Failed to open /lib/apk/db/installed"))?;
+	    
+	    let reader = BufReader::new(file);
+	    
+	    // Each package entry in the Alpine DB starts with 'P:'
+	    let count = reader.lines()
+	        .filter_map(|line| line.ok())
+	        .filter(|line| line.starts_with("P:"))
+	        .count();
+
+	    Ok(count)
+	}
+	
     let backends: &[(&str, fn() -> Result<usize, Error>)] = &[
         ("emerge", count_emerge),
         ("flatpak", count_flatpak),
@@ -812,6 +816,7 @@ pub fn get_packages() -> Result<String, Error> {
         ("pacman", count_pacman),
         ("nix", count_nix),
         ("xbps", count_xbps),
+        ("apk", count_apk),
     ];
 
     let mut results = Vec::new();
