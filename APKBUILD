@@ -10,7 +10,7 @@ depends="fd procps"
 source="$pkgname-$pkgver.tar.gz"
 builddir="$srcdir"
 options="!check"
-install="$pkgname.post_install $pkgname.post_upgrade"
+install="$pkgname.post-install $pkgname.post-upgrade"
 
 build() {
 	cd "$builddir"
@@ -48,6 +48,5 @@ package() {
 		"$pkgdir/usr/share/idun/Idun_c64u_run_first.cfg"
 }
 sha512sums="
-e58bcbaa16f2b09b23aaf5c85be41648fa080aa43b7c1b9cbea23b712e443f4452e2e3e1e7cbeb6e332c4ba2673d703ce09e8dbe1fe7dea3864e298c65a2bb9e  idun-defaults-1.0.tar.gz
-c3944d35bf76daeb6422b066d872df921a67b7cc01210054d1e63eaded24eac2a7cf7e087fd675ad3f657d6ce68a05d9c721ccef9b2730c0ed869f3b5f418173  idun-defaults.install
+8ffc58c5add566fd6eea5c9336a5554c635ae10332eaa768f0589773fe5815a734d36e5a13c394a4d5b100639f626b82d3566f28d261db16cef519a6a70de349  idun-defaults-1.0.tar.gz
 "
