@@ -6,8 +6,11 @@ pkgdesc="Idun default configuration files"
 url="https://github.com/idun-project/idun-defaults"
 arch="aarch64"
 license="GPL3"
-depends="fd"
-source="$pkgname-$pkgver.tar.gz"
+depends="fd procps"
+source="
+$pkgname-$pkgver.tar.gz
+$pkgname.post-install
+"
 builddir="$srcdir"
 options="!check"
 install="$pkgname.post-install"
@@ -48,5 +51,5 @@ package() {
 		"$pkgdir/usr/share/idun/Idun_c64u_run_first.cfg"
 }
 sha512sums="
-115f86f1cc70b2f9374b347311592c8d0373c5420d3525ecea0ccd80a15a14f14dfb72988244650f447fc68011ca654a27399f25b4b8f80b721dfe320a45f996  idun-defaults-1.0.tar.gz
+2c00b6fd46a52e3834ed4c492ba2816ddcf5e9fd865c697a5db22674846ba33e373e80f52401c18575f94e70626a66b9f1e9a8174247f9f1b892b31689d79ecc  idun-defaults-1.0.tar.gz
 "
