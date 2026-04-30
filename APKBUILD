@@ -1,12 +1,12 @@
 # Maintainer: Brian Holdsworth <brian@focus42llc.com>
 pkgname=idun-defaults
 pkgver=1.0
-pkgrel=0
+pkgrel=1
 pkgdesc="Idun default configuration files"
 url="https://github.com/idun-project/idun-defaults"
 arch="aarch64"
 license="GPL3"
-depends="fd procps"
+depends="fd procps socat"
 source="$pkgname-$pkgver.tar.gz"
 builddir="$srcdir"
 options="!check"

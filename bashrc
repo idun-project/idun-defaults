@@ -32,7 +32,7 @@ shopt -s histappend
 FF_LAST_MATCH=
 
 # Assign this directory, if not already defined
-export IDUN_SYS_DIR="${IDUN_SYS_DIR:-$HOME/idun-sys}"
+export IDUN_SYS_DIR="${IDUN_SYS_DIR:-/usr/share/idun}"
 
 # This routine provides a safe wrapper around idunsh
 idunshell() {
