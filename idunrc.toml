@@ -32,11 +32,11 @@ devices = [
 	# Full permissions and can be mounted RW
 	{id="D", type=7, addr=8, cmd=31, flags=56},
 	# E: User path to apps/ dir
-	{id="E", type=4, addr=10, cmd=31, flags=60, path="/home/idun/idun-base/apps"},
+	{id="E", type=4, addr=10, cmd=31, flags=60, path="/usr/share/idun/base/apps"},
 	# F: unused
 	{id="F", type=255},
 	# G: unused
-	{id="G", type=4, addr=11, cmd=31, flags=60, path="/home/idun/idun-base/C64-PD-Games"},
+	{id="G", type=4, addr=11, cmd=31, flags=60, path="/home/idun/C64-PD-Games"},
 	# H: unused
 	{id="H", type=255},
 	# I: Configuration service
