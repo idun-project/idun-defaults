@@ -1,7 +1,7 @@
 # Maintainer: Brian Holdsworth <brian@focus42llc.com>
 pkgname=idun-defaults
 pkgver=1.0
-pkgrel=1
+pkgrel=2
 pkgdesc="Idun default configuration files"
 url="https://github.com/idun-project/idun-defaults"
 arch="aarch64"
@@ -48,5 +48,5 @@ package() {
 		"$pkgdir/usr/share/idun/Idun_c64u_run_first.cfg"
 }
 sha512sums="
-6f861e3a54b882d6190adf6a353a3b8735ef3b58de59ed5ca2db71f0fa22bfd18f36c38318f9b128cafc9436cc1be5042905755b3baf151617cba74abcb4b87c  idun-defaults-1.0.tar.gz
+6c650b7f2245acda15bcc7586ed1a06c8dbf41d09dbb9e493c548dbe01f3177892965a8a7bd28b44f6ad06fcceb6d468eb8f546f0df432d00f01dc38a8a02b1a  idun-defaults-1.0.tar.gz
 "
