@@ -48,5 +48,5 @@ package() {
 		"$pkgdir/usr/share/idun/Idun_c64u_run_first.cfg"
 }
 sha512sums="
-6c650b7f2245acda15bcc7586ed1a06c8dbf41d09dbb9e493c548dbe01f3177892965a8a7bd28b44f6ad06fcceb6d468eb8f546f0df432d00f01dc38a8a02b1a  idun-defaults-1.0.tar.gz
+1e50a80f762c42b63db4ba8dba61e85c22bc95db0e7e80cf4ad595a1a17d09f16d4b4f112c04fe232df6261d57a0ef2553c38079c3bd5951c627a698a0d94d95  idun-defaults-1.0.tar.gz
 "
