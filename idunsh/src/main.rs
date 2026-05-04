@@ -32,6 +32,7 @@ const CATALOG_CMD: u8   = 4;
 const DRIVES_CMD: u8    = 5;
 const MOUNT_CMD: u8     = 6;
 const ASSIGN_CMD: u8    = 7;
+const DRV_CMD: u8       = 8;
 
 #[derive(Parser)]
 #[command(version, about, long_about=None, arg_required_else_help=true,
@@ -93,6 +94,8 @@ enum Syscommands {
     Reboot,
     /// Stop a running program (sends "STOP" key)
     Stop,
+    /// Switch/change directory to a virtual drive
+    Drv { dev:String },
 }
 fn parse_sys_command(cli: &Cli) -> Syscommand {
     let mut argv = vec!["idunsh".to_string()];
@@ -247,6 +250,12 @@ fn main() -> Result<()> {
         Syscommands::Reboot => return reboot_cmd(0),
         Syscommands::Stop   => return stop_cmd(),
         Syscommands::Dir { dev } => shell(DIR_CMD, &dev, proc)?,
+        Syscommands::Drv { mut dev } => {
+            dev.push(':');
+            let cmd = format!("sys.chdir(\"{}\")", dev);
+            luasend(cmd)?;
+            shell(DRV_CMD, &dev, proc)?;
+        }
         Syscommands::Catalog { dev } => {
             let argstr = format!("{}{}", xargs, dev);
             shell(CATALOG_CMD, &argstr, proc)?

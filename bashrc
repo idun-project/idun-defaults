@@ -129,6 +129,13 @@ command_not_found_handle() {
     local cmd="$1"
     shift
 
+    # Check for drive selection syntax
+    if [[ "$cmd" =~ ^@([a-zA-Z]):?$ ]]; then
+        local arg="${BASH_REMATCH[1]}"
+        idunsh drv "$arg"
+        return $?
+    fi
+
     # Attempt glob expansion
     local expanded=()
     for arg in "$@"; do
@@ -237,19 +244,13 @@ dir() {
     # Usage: dir <drive>:
     local arg="$1"
 
-    # If no argument given, just call normal dir
-    if [[ -z $arg ]]; then
-        command dir         # use `command` to avoid recursion
-        return $?
-    fi
-
     # If argument starts with letter + colon (e.g., C:, Z:)
     if [[ $arg =~ ^[A-Za-z]: ]]; then
         idunmsg -s dir "$arg"
         return $?
     else
-        command dir "$arg"  # otherwise call normal dir
-        return $?
+        echo "Error: must specify an Idun device"
+        return 1
     fi
 }
 
