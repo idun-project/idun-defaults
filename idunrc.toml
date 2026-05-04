@@ -32,7 +32,7 @@ devices = [
 	# Full permissions and can be mounted RW
 	{id="D", type=7, addr=8, cmd=31, flags=56},
 	# E: User path to apps/ dir
-	{id="E", type=4, addr=10, cmd=31, flags=60, path="/usr/share/idun/base/apps"},
+	{id="E", type=4, addr=10, cmd=31, flags=60, path="/usr/share/idun/base"},
 	# F: unused
 	{id="F", type=255},
 	# G: unused
