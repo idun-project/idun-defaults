@@ -4,12 +4,6 @@ if [ ! -d "/home/idun/.config" ]; then
     mkdir -p /home/idun/.config
     chown idun:idun /home/idun/.config
 fi
-if [ -f "/home/idun/.config/idunrc.toml" ]; then
-    mv /home/idun/.config/idunrc.toml /home/idun/.config/idunrc.bak
-fi
-
-cp /usr/share/idun/idunrc.toml /home/idun/.config/idunrc.toml
-chown idun:idun /home/idun/.config/idunrc.toml
 
 if [ -f /home/idun/.bashrc ]; then
     cp /home/idun/.bashrc /home/idun/.bashrc.bak
