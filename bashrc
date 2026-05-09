@@ -31,8 +31,9 @@ shopt -s histappend
 # Global variable used with run command
 FF_LAST_MATCH=
 
-# Assign this directory, if not already defined
+# Assign these directories, if not already defined
 export IDUN_SYS_DIR="${IDUN_SYS_DIR:-/usr/share/idun}"
+export XDG_RUNTIME_DIR="/run/user/$(id -u)"
 
 # This routine provides a safe wrapper around idunsh
 idunshell() {
