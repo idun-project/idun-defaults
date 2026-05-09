@@ -13,6 +13,7 @@ options="!check"
 install="$pkgname.post-install $pkgname.post-upgrade"
 
 build() {
+	export RUSTFLAGS="-C target-feature=-crt-static -C link-arg=-dynamic-linker=/lib/ld-musl-aarch64.so.1"
 	cd "$builddir"
 	
 	cd ffetch
@@ -45,5 +46,5 @@ package() {
 		"$pkgdir/usr/share/idun/Idun_c64u_run_first.cfg"
 }
 sha512sums="
-112741cd1961b2343752ed4e7e0fe3341a0186c0df0230475155b99050843227cef299d261f877938162a2685e5bbeed5bf7fd1f1da79f610fd7640970252572  idun-defaults-1.0.tar.gz
+2a6c47763c28cacbb1b4c28aafaf604eb3b11ef2055dd36e502289c426ef70a2500a30c71dc02ccaf5c6995d68ac6405aa93d6a60ebfce457d31c8c2f24b491e  idun-defaults-1.0.tar.gz
 "
