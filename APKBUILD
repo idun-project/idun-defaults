@@ -6,7 +6,7 @@ pkgdesc="Idun default configuration files"
 url="https://github.com/idun-project/idun-defaults"
 arch="aarch64"
 license="GPL3"
-depends="cage seatd mpv yt-dlp cool-retro-term idun-vice fd procps socat"
+depends="fd procps socat"
 source="$pkgname-$pkgver.tar.gz"
 builddir="$srcdir"
 options="!check"
@@ -46,5 +46,5 @@ package() {
 		"$pkgdir/usr/share/idun/Idun_c64u_run_first.cfg"
 }
 sha512sums="
-ec115c040c7403df2c83c2337058fa6db18f33437b76f0f3822635e04424af3ff009a2d012607fb13ede2d245fc2afb214a69e752d8286e482f6375adfc29d6d  idun-defaults-1.1.tar.gz
+7b4f6aacca545902c717b758e33067fe17483ab96367a077a5834e8269a480db8445949766be33b0dd40c0d07713acdef935e4e95ee8f580c7436848d55c5d2d  idun-defaults-1.1.tar.gz
 "
