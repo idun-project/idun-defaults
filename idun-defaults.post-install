@@ -17,7 +17,3 @@ if [ -f /home/idun/.newshell ]; then
 fi
 cp /usr/share/idun/newshell /home/idun/.newshell
 chown idun:idun /home/idun/.newshell
-# Setup seatd
-rc-update add seatd default
-rc-service seatd start
-addgroup idun seat

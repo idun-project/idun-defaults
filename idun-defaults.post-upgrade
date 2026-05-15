@@ -1,15 +1,13 @@
 #!/bin/sh
 
-if [ -f "/home/idun/.config/idunrc.toml" ]; then
-    mv /home/idun/.config/idunrc.toml /home/idun/.config/idunrc.bak
-fi
-
+# if [ -f "/home/idun/.config/idunrc.toml" ]; then
+#     mv /home/idun/.config/idunrc.toml /home/idun/.config/idunrc.bak
+# fi
 if [ -f /home/idun/.bashrc ]; then
     cp /home/idun/.bashrc /home/idun/.bashrc.bak
 fi
 cp /usr/share/idun/bashrc /home/idun/.bashrc
 chown idun:idun /home/idun/.bashrc
-
 if [ -f /home/idun/.newshell ]; then
     cp /home/idun/.newshell /home/idun/.newshell.bak
 fi
