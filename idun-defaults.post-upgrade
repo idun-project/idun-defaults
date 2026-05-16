@@ -1,15 +1,13 @@
 #!/bin/sh
 
+# Sometimes we need to push out a new configuration schema. Uncomment this
+# to force the default configuration file/schema on next `idunio` restart.
 # if [ -f "/home/idun/.config/idunrc.toml" ]; then
 #     mv /home/idun/.config/idunrc.toml /home/idun/.config/idunrc.bak
 # fi
+
 if [ -f /home/idun/.bashrc ]; then
     cp /home/idun/.bashrc /home/idun/.bashrc.bak
 fi
 cp /usr/share/idun/bashrc /home/idun/.bashrc
 chown idun:idun /home/idun/.bashrc
-if [ -f /home/idun/.newshell ]; then
-    cp /home/idun/.newshell /home/idun/.newshell.bak
-fi
-cp /usr/share/idun/newshell /home/idun/.newshell
-chown idun:idun /home/idun/.newshell

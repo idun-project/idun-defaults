@@ -11,9 +11,11 @@ if [ -f /home/idun/.bashrc ]; then
 fi
 cp /usr/share/idun/bashrc /home/idun/.bashrc
 chown idun:idun /home/idun/.bashrc
-# Replacement .newshell
-if [ -f /home/idun/.newshell ]; then
-    cp /home/idun/.newshell /home/idun/.newshell.bak
+# Replacement .profile
+if [ -f /home/idun/.profile ]; then
+    cp /home/idun/.profile /home/idun/.profile.bak
 fi
 cp /usr/share/idun/newshell /home/idun/.newshell
+cp /usr/share/idun/newshell /home/idun/.profile
 chown idun:idun /home/idun/.newshell
+chown idun:idun /home/idun/.profile
