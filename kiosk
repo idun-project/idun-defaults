@@ -1,0 +1,137 @@
+#!/bin/bash
+
+install() {
+    local list="/usr/share/idun/kiosk.lst"
+    local bindir="$HOME/.local/bin"
+    local self
+    local count=0
+
+    self="$(readlink -f "$0")"
+    mkdir -p "$bindir"
+    declare -A wanted
+
+    #
+    # Pass 1: Synchronize desired links
+    #
+    while IFS= read -r line; do
+        # Remove trailing comments
+        line="${line%%#*}"
+
+        # Trim trailing whitespace
+        line="${line%"${line##*[![:space:]]}"}"
+
+        # Skip blanks
+        [ -n "$line" ] || continue
+
+        app="${line%%:*}"
+        wanted["$app"]=1
+        ln -snf "$self" "$bindir/$app"
+    done < "$list"
+
+    #
+    # Pass 2: Remove obsolete kiosk-managed links
+    #
+    for link in "$bindir"/*; do
+        [ -L "$link" ] || continue
+
+        target="$(readlink -f "$link")"
+        [ "$target" = "$self" ] || continue
+
+        app="$(basename "$link")"
+        if [ -z "${wanted[$app]}" ]; then
+            rm -f "$link"
+        fi
+    done
+
+    #
+    # Pass 3: Display available applications
+    #
+    printf "\n"
+    printf "Available kiosk applications:\n\n"
+    while IFS= read -r line; do
+
+        # Remove trailing comments
+        line="${line%%#*}"
+
+        # Trim trailing whitespace
+        line="${line%"${line##*[![:space:]]}"}"
+
+        # Skip blanks
+        [ -n "$line" ] || continue
+
+        app="${line%%:*}"
+        if [[ "$line" == *:* ]]; then
+            pkg="${line#*:}"
+        else
+            pkg="$app"
+        fi
+
+        desc="$(
+            apk info --installed -d "$pkg" 2>/dev/null |
+            sed -n '2p'
+        )"
+        [ -n "$desc" ] || desc="(description unavailable)"
+
+        printf "  %-18s %s\n" "$app" "$desc"
+        count=$((count + 1))
+    done < "$list"
+
+    printf "\n%d application(s) available.\n" "$count"
+}
+
+cmd="$(basename "$0")"
+if [ "$cmd" = "kiosk" ]; then
+    install
+    exit 0
+fi
+
+crt_state="$HOME/.local/state/idun/crt"
+
+if [ -r "$crt_state" ] && [ "$(cat "$crt_state")" = "1" ]; then
+    export ENABLE_VKBASALT=1
+else
+    export ENABLE_VKBASALT=0
+fi
+
+target="/usr/bin/$cmd"
+launcher=()
+
+case "$cmd" in
+    vice)
+        export SDL_VIDEO_DRIVER=wayland
+        export SDL_RENDER_DRIVER=vulkan
+        ;;
+
+    yazi)
+        target="/usr/bin/rio"
+        launcher=(-e /usr/bin/yazi)
+        ;;
+esac
+
+runtime="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+have_wayland=0
+
+if [ -n "${WAYLAND_DISPLAY:-}" ] && [ -S "$runtime/$WAYLAND_DISPLAY" ]; then
+    have_wayland=1
+else
+    for s in "$runtime"/wayland-*; do
+        [ -S "$s" ] || continue
+        export WAYLAND_DISPLAY="$(basename "$s")"
+        have_wayland=1
+        break
+    done
+fi
+
+launch() {
+    if [ "$have_wayland" -eq 1 ]; then
+        setsid -c "$target" "${launcher[@]}" "$@" \
+            >/dev/null 2>&1 </dev/null &
+    else
+        setsid -c cage -d -s -- "$target" "${launcher[@]}" "$@" \
+            >/dev/null 2>&1 </dev/null &
+    fi
+
+    exit 0
+}
+
+launch "$@"

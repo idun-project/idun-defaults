@@ -1,12 +1,12 @@
 # Maintainer: Brian Holdsworth <brian@focus42llc.com>
 pkgname=idun-defaults
-pkgver=1.2
+pkgver=1.3
 pkgrel=0
 pkgdesc="Idun default configuration files"
 url="https://github.com/idun-project/idun-defaults"
 arch="aarch64"
 license="GPL3"
-depends="fd procps socat"
+depends="fd procps socat rio syncterm yazi"
 source="$pkgname-$pkgver.tar.gz"
 builddir="$srcdir"
 options="!check"
@@ -31,7 +31,9 @@ package() {
 
 	install -Dm755 "$builddir/target/release/idunsh" \
 		"$pkgdir/usr/bin/idunsh"
-
+	# Kiosk scripts/assets
+	install -Dm755 "$builddir/kiosk" \
+		"$pkgdir/usr/bin/kiosk"
 	# Config files
 	install -Dm644 "$builddir/idunrc.toml" \
 		"$pkgdir/usr/share/idun/idunrc.toml"
@@ -44,6 +46,9 @@ package() {
 
 	install -Dm644 "$builddir/Idun_c64u_run_first.cfg" \
 		"$pkgdir/usr/share/idun/Idun_c64u_run_first.cfg"
+
+	install -Dm644 "$builddir/kiosk.lst" \
+		"$pkgdir/usr/share/idun/kiosk.lst"
 }
 sha512sums="
 b43ca8ecaab1f663a334250a3709f9a4863e187aebbf122396bb16a3f5a2c03208441df2c243786e0f72cbf3a71afb7cb648205470360cbf5957ccb269faaa6b  idun-defaults-1.2.tar.gz
