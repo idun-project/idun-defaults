@@ -19,3 +19,5 @@ cp /usr/share/idun/newshell /home/idun/.newshell
 cp /usr/share/idun/newshell /home/idun/.profile
 chown idun:idun /home/idun/.newshell
 chown idun:idun /home/idun/.profile
+# seatd group permission
+addgroup seat idun
