@@ -11,3 +11,4 @@ if [ -f /home/idun/.bashrc ]; then
 fi
 cp /usr/share/idun/bashrc /home/idun/.bashrc
 chown idun:idun /home/idun/.bashrc
+addgroup idun seat

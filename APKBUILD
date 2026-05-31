@@ -51,5 +51,5 @@ package() {
 		"$pkgdir/usr/share/idun/kiosk.lst"
 }
 sha512sums="
-8c5eab9de7acac614033cc0454cd07cebf3850952955fead88f1fc9042ea0de0a7617a460e6500fefa8a8a4cf491a818fac659f30ce0d21ab2ff05520cc8b22a  idun-defaults-1.3.tar.gz
+7e885fdb910ff8e45dcb07df1752db29c865ed36db512eccf09677a0f53ba3626bc4b248fa5ffc3c325c45eb23437e80f8fb25d08fff67aa3191f39abd73b3be  idun-defaults-1.3.tar.gz
 "
