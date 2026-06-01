@@ -6,9 +6,19 @@
 #     mv /home/idun/.config/idunrc.toml /home/idun/.config/idunrc.bak
 # fi
 
+# Replacement .bashrc
 if [ -f /home/idun/.bashrc ]; then
     cp /home/idun/.bashrc /home/idun/.bashrc.bak
 fi
 cp /usr/share/idun/bashrc /home/idun/.bashrc
 chown idun:idun /home/idun/.bashrc
+# Replacement .profile
+if [ -f /home/idun/.profile ]; then
+    cp /home/idun/.profile /home/idun/.profile.bak
+fi
+cp /usr/share/idun/newshell /home/idun/.newshell
+cp /usr/share/idun/newshell /home/idun/.profile
+chown idun:idun /home/idun/.newshell
+chown idun:idun /home/idun/.profile
+# seatd group permission
 addgroup idun seat
