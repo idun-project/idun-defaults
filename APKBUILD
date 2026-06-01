@@ -6,7 +6,7 @@ pkgdesc="Idun default configuration files"
 url="https://github.com/idun-project/idun-defaults"
 arch="aarch64"
 license="GPL3"
-depends="fd procps socat seatd cage rio syncterm yazi"
+depends="fd procps socat cage rio syncterm yazi"
 source="$pkgname-$pkgver.tar.gz"
 builddir="$srcdir"
 options="!check"
@@ -51,5 +51,5 @@ package() {
 		"$pkgdir/usr/share/idun/kiosk.lst"
 }
 sha512sums="
-7e885fdb910ff8e45dcb07df1752db29c865ed36db512eccf09677a0f53ba3626bc4b248fa5ffc3c325c45eb23437e80f8fb25d08fff67aa3191f39abd73b3be  idun-defaults-1.3.tar.gz
+b46c71af8c811d11b61dda7b0ee1cd93a7109292c9648ee9174e4a67c3f44fd66e5b769fb05cc88dedbac31fd96d0ca5031cbd3c6d6afbcfcd5534ba46eea935  idun-defaults-1.3.tar.gz
 "
