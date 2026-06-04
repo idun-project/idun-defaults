@@ -35,6 +35,9 @@ FF_LAST_MATCH=
 export IDUN_SYS_DIR="${IDUN_SYS_DIR:-/usr/share/idun}"
 export XDG_RUNTIME_DIR="/run/user/$(id -u)"
 
+# Assign your favorite
+export EDITOR=joe
+
 # This routine provides a safe wrapper around idunsh
 idunshell() {
   history -a

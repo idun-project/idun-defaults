@@ -97,13 +97,16 @@ target="/usr/bin/$cmd"
 launcher=()
 
 case "$cmd" in
+	xterm)
+		target="/usr/bin/alacritty"
+		;;
+		
     vice)
         export SDL_VIDEO_DRIVER=wayland
-        export SDL_RENDER_DRIVER=vulkan
         ;;
 
-    yazi)
-        target="/usr/bin/rio"
+    thor)
+        target="/usr/bin/alacritty"
         launcher=(-e /usr/bin/yazi)
         ;;
 esac

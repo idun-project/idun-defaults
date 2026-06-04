@@ -1,4 +1,11 @@
 # Maintainer: Brian Holdsworth <brian@focus42llc.com>
+# Define the kiosk apps and their dependencies
+_base_deps="cage
+syncterm
+"
+_xterm_deps="alacritty"
+_thor_deps="yazi"
+
 pkgname=idun-defaults
 pkgver=1.3
 pkgrel=0
@@ -6,7 +13,14 @@ pkgdesc="Idun default configuration files"
 url="https://github.com/idun-project/idun-defaults"
 arch="aarch64"
 license="GPL3"
-depends="fd procps socat cage rio syncterm yazi"
+depends="fd
+fzf
+procps
+socat
+$_base_deps
+$_xterm_deps
+$_thor_deps
+"
 source="$pkgname-$pkgver.tar.gz"
 builddir="$srcdir"
 options="!check"
