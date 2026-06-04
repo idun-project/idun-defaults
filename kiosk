@@ -2,6 +2,7 @@
 
 install() {
     local list="/usr/share/idun/kiosk.lst"
+    local configs="/usr/share/idun/kiosk_conf.tar.zst"
     local bindir="$HOME/.local/bin"
     local self
     local count=0
@@ -11,7 +12,7 @@ install() {
     declare -A wanted
 
     #
-    # Pass 1: Synchronize desired links
+    # Part 1: Synchronize desired links
     #
     while IFS= read -r line; do
         # Remove trailing comments
@@ -29,7 +30,7 @@ install() {
     done < "$list"
 
     #
-    # Pass 2: Remove obsolete kiosk-managed links
+    # Part 2: Remove obsolete kiosk-managed links
     #
     for link in "$bindir"/*; do
         [ -L "$link" ] || continue
@@ -44,7 +45,12 @@ install() {
     done
 
     #
-    # Pass 3: Display available applications
+    # Part 3: Install application configuration files
+    #
+    tar --skip-old-files --zstd -xf "$configs" -C ~/.config
+
+    #
+    # Part 4: Display available applications
     #
     printf "\n"
     printf "Available kiosk applications:\n\n"

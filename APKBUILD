@@ -63,6 +63,9 @@ package() {
 
 	install -Dm644 "$builddir/kiosk.lst" \
 		"$pkgdir/usr/share/idun/kiosk.lst"
+
+	install -Dm644 "$builddir/kiosk_conf.tar.zst" \
+		"$pkgdir/usr/share/idun/kiosk_conf.tar.zst"
 }
 sha512sums="
 b46c71af8c811d11b61dda7b0ee1cd93a7109292c9648ee9174e4a67c3f44fd66e5b769fb05cc88dedbac31fd96d0ca5031cbd3c6d6afbcfcd5534ba46eea935  idun-defaults-1.3.tar.gz
