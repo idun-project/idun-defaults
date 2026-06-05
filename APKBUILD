@@ -3,8 +3,16 @@
 _base_deps="cage
 syncterm
 "
-_xterm_deps="alacritty"
-_thor_deps="yazi"
+_xterm_deps="alacritty
+font-jetbrains-mono-nerd"
+_thor_deps="yazi
+ueberzugpp
+bat
+mediainfo
+poppler-utils
+zathura
+zathura-pdf-poppler
+"
 
 pkgname=idun-defaults
 pkgver=1.3
