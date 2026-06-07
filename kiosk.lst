@@ -1,6 +1,7 @@
 # command[:package]
-xterm:alacritty
+xterm:kitty
 thor:yazi
 syncterm
+ocp
 # rio
 vice:idun-vice

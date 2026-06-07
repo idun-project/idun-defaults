@@ -3,10 +3,9 @@
 _base_deps="cage
 syncterm
 "
-_xterm_deps="alacritty
+_xterm_deps="kitty-wayland
 font-jetbrains-mono-nerd"
 _thor_deps="yazi
-ueberzugpp
 bat
 mediainfo
 poppler-utils
