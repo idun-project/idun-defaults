@@ -142,7 +142,7 @@ launch() {
         setsid -c "$target" "${launcher[@]}" "$@" \
             >/dev/null 2>&1 </dev/null
     else
-        cage -m last -d -- "$target" "${launcher[@]}" "$@" \
+        cage -m last -s -d -- "$target" "${launcher[@]}" "$@" \
             >/dev/null 2>&1 </dev/null &
     fi
 }
