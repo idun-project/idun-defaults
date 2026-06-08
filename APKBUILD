@@ -2,6 +2,7 @@
 # Define the kiosk apps and their dependencies
 _base_deps="cage
 syncterm
+opencubicplayer
 "
 _xterm_deps="kitty-wayland
 font-jetbrains-mono-nerd"
