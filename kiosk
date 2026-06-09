@@ -104,7 +104,7 @@ launcher=()
 
 case "$cmd" in
 	xterm)
-		target="/usr/bin/kitty"
+		target="/usr/bin/alacritty"
 		;;
 		
     vice)
@@ -112,12 +112,12 @@ case "$cmd" in
         ;;
 
     thor)
-        target="/usr/bin/kitty"
+        target="/usr/bin/alacritty"
         launcher=(-e /usr/bin/yazi)
         ;;
 
     ocp)
-    	target="/usr/bin/kitty"
+    	target="/usr/bin/alacritty"
     	launcher=(-e /usr/bin/ocp)
     	;;
 esac

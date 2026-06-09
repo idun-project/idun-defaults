@@ -1,7 +1,7 @@
 # command[:package]
-xterm:kitty
+xterm:alacritty
+# xterm:rio
 thor:yazi
 syncterm
-ocp
-# rio
+ocp:opencubicplayer
 vice:idun-vice
