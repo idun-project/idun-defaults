@@ -16,7 +16,7 @@ zathura-pdf-poppler
 7zip"
 
 pkgname=idun-defaults
-pkgver=1.3
+pkgver=1.4
 pkgrel=0
 pkgdesc="Idun default configuration files"
 url="https://github.com/idun-project/idun-defaults"
@@ -69,7 +69,13 @@ package() {
 
 	install -Dm644 "$builddir/Idun_c64u_run_first.cfg" \
 		"$pkgdir/usr/share/idun/Idun_c64u_run_first.cfg"
+	# rootfs resizer
+	install -Dm755 "$builddir/resize-fs" \
+		"$pkgdir/usr/bin/resize-fs"
 
+	install -Dm755 "$builddir/resizesd.rc" \
+		"$pkgdir/etc/init.d/resizesd"
+	# Kiosk
 	install -Dm644 "$builddir/kiosk.lst" \
 		"$pkgdir/usr/share/idun/kiosk.lst"
 
@@ -77,5 +83,5 @@ package() {
 		"$pkgdir/usr/share/idun/kiosk_conf.tar.zst"
 }
 sha512sums="
-b914c3e595a1f5d8bfe400a5581dfb956828e11568793c1c420c423d6a735fa87907a383e451785a29a0c416623082cc36f5d6ea3e7b86706ea512cdd6ddc6d1  idun-defaults-1.3.tar.gz
+5bb2ab5e46b5b24026a1995fab070f2e7993a6e3a58012c0afdcee3eb9a3cdbd916a939b4968f77966eb35a0cbd9f4144677868622f47a8e674a2335b6ec5988  idun-defaults-1.4.tar.gz
 "

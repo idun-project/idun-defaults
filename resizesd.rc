@@ -1,0 +1,15 @@
+#!/sbin/openrc-run
+
+name="resizesd"
+description="One-shot service; resizes rootfs"
+
+# Point to your script
+command="/usr/local/bin/resize-fs"
+
+# Force it to run in the foreground (synchronous)
+command_background="no"
+
+depend() {
+    need localmount
+    before *
+}
