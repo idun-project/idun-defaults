@@ -1,0 +1,43 @@
+#!/bin/bash
+# 
+# resize-fs - Stage 1/2 Expansion
+#
+
+DEV="/dev/mmcblk0"
+PART_NUM=2
+PART_PATH="${DEV}p${PART_NUM}"
+FLAG="/var/lib/idun-resize-done"
+
+# STAGE 2: After Reboot
+if [ -f "$FLAG" ]; then
+    echo "Stage 2: Kernel has refreshed. Expanding filesystem..."
+    
+    # Filesystem check is good practice before resizing
+    e2fsck -fy "$PART_PATH"
+    resize2fs "$PART_PATH"
+    
+    # Cleanup: Disable service and remove flag
+    echo "Resize complete. Cleaning up..."
+    rc-update del resizesd default
+    rm "$FLAG"
+    exit 0
+fi
+
+echo "Stage 1: Updating physical partition table..."
+
+# Get current start sector to be safe
+START_SECTOR=$(cat /sys/class/block/mmcblk0p2/start)
+
+# Rewrite MBR with all remaining space
+echo "$START_SECTOR, +" | sudo sfdisk "$DEV" -N "$PART_NUM" --force --no-reread
+
+# Create the flag so we know to run Stage 2 after reboot
+sudo touch "$FLAG"
+
+# Enable Stage 2 using the one-shot service approach
+echo "Enabling stage 2 resize filesystem, after boot."
+rc-update add resizesd default
+
+echo "Rebooting with new kernel partition table..."
+sync
+sudo reboot

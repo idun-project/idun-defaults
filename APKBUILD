@@ -2,20 +2,21 @@
 # Define the kiosk apps and their dependencies
 _base_deps="cage
 syncterm
-opencubicplayer
-"
-_xterm_deps="kitty-wayland
+opencubicplayer"
+_xterm_deps="alacritty
 font-jetbrains-mono-nerd"
 _thor_deps="yazi
+yazi-cli
 bat
 mediainfo
+ueberzugpp
 poppler-utils
 zathura
 zathura-pdf-poppler
-"
+7zip"
 
 pkgname=idun-defaults
-pkgver=1.3
+pkgver=1.4
 pkgrel=0
 pkgdesc="Idun default configuration files"
 url="https://github.com/idun-project/idun-defaults"
@@ -68,7 +69,13 @@ package() {
 
 	install -Dm644 "$builddir/Idun_c64u_run_first.cfg" \
 		"$pkgdir/usr/share/idun/Idun_c64u_run_first.cfg"
+	# rootfs resizer
+	install -Dm755 "$builddir/resize-fs" \
+		"$pkgdir/usr/bin/resize-fs"
 
+	install -Dm755 "$builddir/resizesd.rc" \
+		"$pkgdir/etc/init.d/resizesd"
+	# Kiosk
 	install -Dm644 "$builddir/kiosk.lst" \
 		"$pkgdir/usr/share/idun/kiosk.lst"
 
@@ -76,5 +83,5 @@ package() {
 		"$pkgdir/usr/share/idun/kiosk_conf.tar.zst"
 }
 sha512sums="
-b46c71af8c811d11b61dda7b0ee1cd93a7109292c9648ee9174e4a67c3f44fd66e5b769fb05cc88dedbac31fd96d0ca5031cbd3c6d6afbcfcd5534ba46eea935  idun-defaults-1.3.tar.gz
+5bb2ab5e46b5b24026a1995fab070f2e7993a6e3a58012c0afdcee3eb9a3cdbd916a939b4968f77966eb35a0cbd9f4144677868622f47a8e674a2335b6ec5988  idun-defaults-1.4.tar.gz
 "

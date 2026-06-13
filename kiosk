@@ -1,4 +1,14 @@
 #!/bin/bash
+launch() {
+	export LANG=C.UTF-8
+    if [ "$have_wayland" -eq 1 ]; then
+        setsid -c "$target" "${launcher[@]}" "$@" \
+            >/dev/null 2>&1 </dev/null
+    else
+        cage -m last -d -s -- "$target" "${launcher[@]}" "$@" \
+            >/dev/null 2>&1 </dev/null &
+    fi
+}
 
 install() {
     local list="/usr/share/idun/kiosk.lst"
@@ -104,7 +114,7 @@ launcher=()
 
 case "$cmd" in
 	xterm)
-		target="/usr/bin/kitty"
+		target="/usr/bin/alacritty"
 		;;
 		
     vice)
@@ -112,12 +122,12 @@ case "$cmd" in
         ;;
 
     thor)
-        target="/usr/bin/kitty"
+        target="/usr/bin/alacritty"
         launcher=(-e /usr/bin/yazi)
         ;;
 
     ocp)
-    	target="/usr/bin/kitty"
+    	target="/usr/bin/alacritty"
     	launcher=(-e /usr/bin/ocp)
     	;;
 esac
@@ -136,6 +146,7 @@ else
     done
 fi
 
+<<<<<<< HEAD
 launch() {
 	export LANG=C.UTF-8
     if [ "$have_wayland" -eq 1 ]; then
@@ -147,5 +158,7 @@ launch() {
     fi
 }
 
+=======
+>>>>>>> ed72b9c1a871fc0b0a3d5edc221d7ea0218f14e0
 launch "$@"
 exit 0
