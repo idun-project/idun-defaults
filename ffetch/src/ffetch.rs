@@ -420,7 +420,8 @@ pub fn get_memory() -> Result<String, Error> {
     })?;
 
     let used = total - free;
-    Ok(format!("{used} / {total} MB"))
+    let pct = used * 100 / total;
+    Ok(format!("{used} / {total} MB ({pct}%)"))
 }
 
 /// Gets the operating system name from `/etc/os-release`.
