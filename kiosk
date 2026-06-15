@@ -1,6 +1,5 @@
 #!/bin/bash
 launch() {
-	export LANG=C.UTF-8
     if [ "$have_wayland" -eq 1 ]; then
         setsid -c "$target" "${launcher[@]}" "$@" \
             >/dev/null 2>&1 </dev/null
