@@ -56,7 +56,12 @@ install() {
     #
     # Part 3: Install application configuration files
     #
-    tar --skip-old-files --zstd -xf "$configs" -C ~/.config
+    if [ "$replace_config" -eq 1 ]; then
+        echo "Over-writing configuration for kiosk apps."
+        tar --zstd -xf "$configs" -C ~/.config
+    else
+        tar --skip-old-files --zstd -xf "$configs" -C ~/.config
+    fi
 
     #
     # Part 4: Display available applications
@@ -96,6 +101,16 @@ install() {
 
 cmd="$(basename "$0")"
 if [ "$cmd" = "kiosk" ]; then
+    replace_config=0
+    
+    # Loop through all arguments passed to the script
+    for arg in "$@"; do
+        if [ "$arg" = "--replace-config" ]; then
+            replace_config=1
+            break
+        fi
+    done
+
     install
     exit 0
 fi
@@ -145,19 +160,5 @@ else
     done
 fi
 
-<<<<<<< HEAD
-launch() {
-	export LANG=C.UTF-8
-    if [ "$have_wayland" -eq 1 ]; then
-        setsid -c "$target" "${launcher[@]}" "$@" \
-            >/dev/null 2>&1 </dev/null
-    else
-        cage -m last -s -d -- "$target" "${launcher[@]}" "$@" \
-            >/dev/null 2>&1 </dev/null &
-    fi
-}
-
-=======
->>>>>>> ed72b9c1a871fc0b0a3d5edc221d7ea0218f14e0
 launch "$@"
 exit 0
