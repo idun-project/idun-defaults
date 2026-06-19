@@ -72,7 +72,7 @@ echo fg.blue "Uptime: " fg.white t.bold getUptime
 echo fg.blue "Terminal: " fg.white t.bold getTerm
 
 ascii = "/home/getUsername/.config/ffetch/logo"
-ascii_color = "fg.cyan"
+ascii_color = "fg.bright_cyan"
 "#;
         file.write_all(content.as_bytes())
             .expect("file write error.");
