@@ -106,19 +106,29 @@ file = "/var/log/idun/idunio"
 # 0=Off, 1=Error, 2=Warn, 3=Info, 4=Debug, 5=Trace
 level = 2
 
-# When the "mode" switch is disabled on the cartridge (position away from
-# Commodore), these settings select the software stack to load at boot time.
-# The default shell is the one listed in [shell_app].
-[start]
-firmware = "idun.binary"	# Start C128 in native mode. Cart hidden on C64.
-booter = "idun128"			# Loads C128 version of idun kernel
+# The firmware is platform specific, and defaults to the Commodore 64.
+# You can set specific firmware HERE. Option is configurable based also
+# on the mode switch position.
+[firmware]
+mode_off = "idun.binary"	# Start C128 in native mode. Cart hidden on C64.
+mode_on = "idun64.binary"	# Starts C128 in C64 mode, or boots a C64.
 
-# When the "mode" switch is enabled on the cartridge, (position toward
-# Commodore), these settings select an alternate software stack to boot.
-[mode]
-firmware = "idun64.binary"	# Starts C128 in C64 mode, or boots a C64.
-booter = "idun-64"			# Loads C64 version of idun kernel
-shell = "shell.app"			# Loads the shell.app
+# The booter is the first program that gets loaded automatically when you 
+# reset the cartridge. Default is to load the appropriate Idun kernel for
+# the machine type.
+[booter]
+# c64 = "idun-64"			# Loads C64 version of idun kernel
+# c64 = "boot-64"			# Loads C64 BASIC with wedge program
+# c128 = "idun128"			# Loads C128 version of idun kernel
+# c128 = "boot128"			# Loads C128 BASIC with wedge program
+
+# The shell is just the default app that is selected by the Idun kernel,
+# and becomes the default program that you interact with after reset.
+# Default is to load "shell,app", which provides the Linux terminal. The
+# option is configurable based also on the mode switch position.
+[shell]
+# mode_off = "cpm.app"		# Start CPem directly on reset
+# mode_on = "arcade.app"	# Start the arcade game selector
 
 [home]
 offset = 128
