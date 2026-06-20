@@ -3,6 +3,7 @@
 #[macro_use] extern crate failure;
 
 use std::env;
+use std::path::PathBuf;
 use std::result;
 use std::process;
 use std::fs;
@@ -191,6 +192,7 @@ fn main() -> Result<()> {
     }
 
     // 'cd' commands as needed
+    let mut stem = String::new();
     if cli.syncdir {
         let path = env::current_dir().unwrap();
         let cmd = format!("sys.chdir(\"{}\")", path.to_string_lossy());
@@ -198,7 +200,28 @@ fn main() -> Result<()> {
         luasend(cmd)?;
         // TESTING - pause here to allow first NMI to complete
         thread::sleep(Duration::from_millis(500));
+    } else {
+        let p = match &syscmd.cmd {
+            Syscommands::Load { prg } => Some(PathBuf::from(prg)),
+            Syscommands::Mount { dev:_, dimage } => Some(PathBuf::from(dimage)),
+            _ => None
+        };
+        if let Some(abs) = p {
+            if abs.is_absolute() && abs.is_file() {
+                let cmd = format!("sys.chdir(\"/{}\")", abs.parent().unwrap().to_string_lossy());
+                luasend(cmd)?;
+
+                if let Some(name) = abs.file_name() {
+                    stem = name.to_string_lossy().into_owned();
+                }
+
+                // TESTING - pause here to allow first NMI to complete
+                thread::sleep(Duration::from_millis(500));
+            }
+        }
     }
+
+    // Process any xarg values
     if let Some(flags)=cli.xarg {
         // Create a switch style flag for each of the characters in xarg.
         for c in flags.chars() {
@@ -246,7 +269,11 @@ fn main() -> Result<()> {
     // Handle commands
     match syscmd.cmd {
         Syscommands::Go { app } => return shell(GO_CMD, &app, 0),
-        Syscommands::Load { prg } => return shell(LOAD_CMD, &prg, 0),
+        Syscommands::Load { prg } => if stem.len() == 0 {
+            return shell(LOAD_CMD, &prg, 0)
+        } else {
+            return shell(LOAD_CMD, &stem, 0)
+        },
         Syscommands::Reboot => return reboot_cmd(0),
         Syscommands::Stop   => return stop_cmd(),
         Syscommands::Dir { dev } => shell(DIR_CMD, &dev, proc)?,
@@ -264,10 +291,15 @@ fn main() -> Result<()> {
             let argstr = dev.clone().unwrap_or_default();
             shell(DRIVES_CMD, &argstr, proc)?
         },
-        Syscommands::Mount { dev, dimage } => {
+        Syscommands::Mount { dev, dimage } => if stem.len() == 0 {
             let mut argstr = String::from(dev);
             argstr.push(' ');
             argstr.push_str(&dimage);
+            shell(MOUNT_CMD, &argstr, proc)?
+        } else {
+            let mut argstr = String::from(dev);
+            argstr.push(' ');
+            argstr.push_str(&stem);
             shell(MOUNT_CMD, &argstr, proc)?
         }
         Syscommands::Assign { dev, path } => {
