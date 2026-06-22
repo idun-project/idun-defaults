@@ -1,6 +1,21 @@
 #!/bin/bash
+display() {
+    runtime="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+
+    if [ -n "${WAYLAND_DISPLAY:-}" ] && [ -S "$runtime/$WAYLAND_DISPLAY" ]; then
+        return 0
+    else
+        for s in "$runtime"/wayland-*; do
+            [ -S "$s" ] || continue
+            export WAYLAND_DISPLAY="$(basename "$s")"
+            return 0
+        done
+        return 1
+    fi
+}
+
 launch() {
-    if [ "$have_wayland" -eq 1 ]; then
+    if display; then
         setsid -c "$target" "${launcher[@]}" "$@" \
             >/dev/null 2>&1 </dev/null
     else
@@ -35,7 +50,6 @@ install() {
 
         app="${line%%:*}"
         wanted["$app"]=1
-        ln -snf "$self" "$bindir/$app"
     done < "$list"
 
     #
@@ -64,7 +78,7 @@ install() {
     fi
 
     #
-    # Part 4: Display available applications
+    # Part 4: Display/link available applications
     #
     printf "\n"
     printf "Available kiosk applications:\n\n"
@@ -90,10 +104,11 @@ install() {
             apk info --installed -d "$pkg" 2>/dev/null |
             sed -n '2p'
         )"
-        [ -n "$desc" ] || desc="(description unavailable)"
-
-        printf "  %-18s %s\n" "$app" "$desc"
-        count=$((count + 1))
+        if [ -n "$desc" ]; then
+            ln -snf "$self" "$bindir/$app"
+            printf "  %-18s %s\n" "$app" "$desc"
+            count=$((count + 1))
+        fi
     done < "$list"
 
     printf "\n%d application(s) available.\n" "$count"
@@ -145,20 +160,6 @@ case "$cmd" in
     	launcher=(-e /usr/bin/ocp)
     	;;
 esac
-
-runtime="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
-have_wayland=0
-
-if [ -n "${WAYLAND_DISPLAY:-}" ] && [ -S "$runtime/$WAYLAND_DISPLAY" ]; then
-    have_wayland=1
-else
-    for s in "$runtime"/wayland-*; do
-        [ -S "$s" ] || continue
-        export WAYLAND_DISPLAY="$(basename "$s")"
-        have_wayland=1
-        break
-    done
-fi
 
 launch "$@"
 exit 0
