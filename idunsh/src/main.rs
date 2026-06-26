@@ -75,7 +75,7 @@ struct Syscommand {
 enum Syscommands {
     /// Launch an application on the Commodore
     Go { app:String},
-    /// Launch a native program on the Commodore
+    /// Launch a native program or PC64 format file on the Commodore
     Load { prg:String },
     /// Launch content on the C64 Ultimate
     Run { prg:String },
@@ -145,6 +145,32 @@ fn stop_cmd() -> Result<()> {
 fn reboot_cmd(mode: u8) -> Result<()> {
     let cmd = format!("sys.reboot({})", mode);
     luasend(cmd)
+}
+
+fn pc64_file_parse(file: &String) -> Result<String> {
+    let mut hdr = [0u8; 26];
+    if let Ok(mut chk) = fs::File::open(file) {
+        return match chk.read_exact(&mut hdr) {
+            Ok(_) => {
+                if hdr[..8]==[0x43u8, 0x36, 0x34, 0x46, 0x69, 0x6C, 0x65, 0x00] {
+                    let mut pname = Vec::<u8>::new();
+                    let mut i = 8;
+
+                    while hdr[i] != 0 {
+                        pname.push(hdr[i]);
+                        i += 1;
+                    }
+
+                    let pstr = PetString::new(&BString::new(pname));
+                    Ok(String::from(pstr))
+                } else {
+                    bail!("Not a valid PC64 file")
+                }
+            },
+            Err(_) => bail!("Failed to parse PC64 file")
+        }
+    }
+    bail!("Not a PC64 filename")
 }
 
 fn main() -> Result<()> {
@@ -269,10 +295,22 @@ fn main() -> Result<()> {
     // Handle commands
     match syscmd.cmd {
         Syscommands::Go { app } => return shell(GO_CMD, &app, 0),
-        Syscommands::Load { prg } => if stem.len() == 0 {
-            return shell(LOAD_CMD, &prg, 0)
-        } else {
-            return shell(LOAD_CMD, &stem, 0)
+        Syscommands::Load { prg } => {
+            let full = prg.clone();
+            let mut fname = prg;
+            // Check if full path to prg
+            if stem.len() > 0 {
+                fname = stem;
+            }
+            // Check if loading from a PC64 file
+            if fname.ends_with(".p00") || fname.ends_with(".p01") ||
+               fname.ends_with(".P00") || fname.ends_with(".P01") {
+
+                if let Ok(pc64) = pc64_file_parse(&full) {
+                    return shell(LOAD_CMD, &pc64, 0)
+                }
+            }
+            return shell(LOAD_CMD, &fname, 0)
         },
         Syscommands::Reboot => return reboot_cmd(0),
         Syscommands::Stop   => return stop_cmd(),
