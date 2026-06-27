@@ -132,9 +132,18 @@ fn luasend(message: String) -> Result<()> {
     Ok(())
 }
 
-fn shell(cmd: u8, args: &String, proc: u32) -> Result<()> {
-    let cmd = format!("sys.shell({}, \"{}\", {})", cmd, args, proc);
-    luasend(cmd)
+fn shell(cmd: u8, args: &[String], proc: Option<u32>) -> Result<()> {
+    let argv = format!(
+        "{{{}}}",
+        args.iter()
+            .map(|s| format!("{:?}", s)) // Rust debug format escapes quotes/backslashes
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
+    let pid = proc.unwrap_or(0);
+    let msg = format!("sys.shell({}, {}, {})", cmd, argv, pid);
+
+    luasend(msg)
 }
 
 fn stop_cmd() -> Result<()> {
@@ -175,7 +184,7 @@ fn pc64_file_parse(file: &String) -> Result<String> {
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
-    let mut xargs = String::new();
+    let mut xargs = Vec::<String>::new();
 
     // Extract the sub-command
     let syscmd = parse_sys_command(&cli);
@@ -251,9 +260,7 @@ fn main() -> Result<()> {
     if let Some(flags)=cli.xarg {
         // Create a switch style flag for each of the characters in xarg.
         for c in flags.chars() {
-            xargs.push('/');
-            xargs.push(c);
-            xargs.push(' ');
+            xargs.push(format!("/{}", c));
         }
     }
     // If output is redirected, create a thread to handle this...
@@ -294,7 +301,7 @@ fn main() -> Result<()> {
 
     // Handle commands
     match syscmd.cmd {
-        Syscommands::Go { app } => return shell(GO_CMD, &app, 0),
+        Syscommands::Go { app } => return shell(GO_CMD, &[app], None),
         Syscommands::Load { prg } => {
             let full = prg.clone();
             let mut fname = prg;
@@ -307,54 +314,44 @@ fn main() -> Result<()> {
                fname.ends_with(".P00") || fname.ends_with(".P01") {
 
                 if let Ok(pc64) = pc64_file_parse(&full) {
-                    return shell(LOAD_CMD, &pc64, 0)
+                    return shell(LOAD_CMD, &[pc64], None)
                 }
             }
-            return shell(LOAD_CMD, &fname, 0)
+            return shell(LOAD_CMD, &[fname], None)
         },
         Syscommands::Reboot => return reboot_cmd(0),
         Syscommands::Stop   => return stop_cmd(),
-        Syscommands::Dir { dev } => shell(DIR_CMD, &dev, proc)?,
+        Syscommands::Dir { dev } => shell(DIR_CMD, &[dev], Some(proc))?,
         Syscommands::Drv { mut dev } => {
             dev.push(':');
             let cmd = format!("sys.chdir(\"{}\")", dev);
             luasend(cmd)?;
-            shell(DRV_CMD, &dev, proc)?;
+            shell(DRV_CMD, &[dev], Some(proc))?;
         }
         Syscommands::Catalog { dev } => {
-            let argstr = format!("{}{}", xargs, dev);
-            shell(CATALOG_CMD, &argstr, proc)?
+            let mut args = xargs;
+            args.push(dev);
+            shell(CATALOG_CMD, args.as_slice(), Some(proc))?
         },
         Syscommands::Drives { dev} => {
             let argstr = dev.clone().unwrap_or_default();
-            shell(DRIVES_CMD, &argstr, proc)?
+            shell(DRIVES_CMD, &[argstr], Some(proc))?
         },
         Syscommands::Mount { dev, dimage } => if stem.len() == 0 {
-            let mut argstr = String::from(dev);
-            argstr.push(' ');
-            argstr.push_str(&dimage);
-            shell(MOUNT_CMD, &argstr, proc)?
+            shell(MOUNT_CMD, &[dev, dimage], Some(proc))?
         } else {
-            let mut argstr = String::from(dev);
-            argstr.push(' ');
-            argstr.push_str(&stem);
-            shell(MOUNT_CMD, &argstr, proc)?
+            shell(MOUNT_CMD, &[dev, stem], Some(proc))?
         }
         Syscommands::Assign { dev, path } => {
-            let mut argstr = String::from(dev);
-            argstr.push(' ');
-            argstr.push_str(&path);
-            shell(ASSIGN_CMD, &argstr, proc)?
+            shell(ASSIGN_CMD, &[dev, path], Some(proc))?
         }
-        Syscommands::Exec { cmd, args} =>
+        Syscommands::Exec { cmd, mut args} =>
         {
-            let argstr = args.join(" ");
-            let mut exe = cmd.to_owned();
-
-            exe.push(' ');
-            exe.push_str(&xargs);
-            exe.push_str(&argstr);
-            shell(EXEC_CMD, &exe, proc)?
+            let mut exe = Vec::<String>::new();
+            exe.push(cmd);
+            exe.append(&mut xargs);
+            exe.append(&mut args);
+            shell(EXEC_CMD, exe.as_slice(), Some(proc))?
         },
         Syscommands::Run { .. } => return Ok(()),   //not used, handled above
     }

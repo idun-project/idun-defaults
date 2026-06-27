@@ -1,3 +1,4 @@
 target/
+conf/
 *.pkg.tar.z*
 *.tar.gz
