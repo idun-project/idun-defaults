@@ -21,3 +21,7 @@ This is the source for the Bash script that will be copied to `/home/idun/.bashr
 newshell
 --------
 When the idun-cartridge first boots up, and first starts the shell.app, this Bash script is run. This is how the `ffetch` command gets invoked when the shell first appears. After that initial startup, this script is ignored by the shell.app.
+
+kiosk
+-----
+Idun supports running graphical Linux applications that take over the HDMI display of the cartridge and are controlled with the Commoodore keyboard/mouse, or with additional connected controllers via the cartridge USB ports. The `kiosk` script is a launcher and configuration utility for these applications.
