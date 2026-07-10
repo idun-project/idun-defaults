@@ -1,4 +1,16 @@
 #!/bin/bash
+spawn() {
+    if command -v systemd-run >/dev/null 2>&1; then
+        systemd-run --user \
+            --collect \
+            --quiet \
+            --same-dir \
+            "$@"
+    else
+        setsid -c "$@" >/dev/null 2>&1 </dev/null
+    fi
+}
+
 display() {
     runtime="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 
@@ -14,10 +26,9 @@ display() {
     fi
 }
 
-launch() {
+session() {
     if display; then
-        setsid -c "$target" "${launcher[@]}" "$@" \
-            >/dev/null 2>&1 </dev/null
+        spawn "$target" "${launcher[@]}" "$@"
     else
         cage -m last -d -s -- "$target" "${launcher[@]}" "$@" \
             >/dev/null 2>&1 </dev/null &
@@ -100,10 +111,24 @@ install() {
             pkg="$app"
         fi
 
-        desc="$(
-            apk info --installed -d "$pkg" 2>/dev/null |
-            sed -n '2p'
-        )"
+        # Determine the package manager
+        if command -v apk >/dev/null 2>&1; then
+            pkg_mgr="apk"
+        elif command -v pacman >/dev/null 2>&1; then
+            pkg_mgr="pacman"
+        else
+            pkg_mgr="unknown"
+            echo "Warning: No supported package manager (apk/pacman) found."
+        fi
+
+        # Fetch description based on the active package manager
+        desc=""
+        if [ "$pkg_mgr" = "apk" ]; then
+            desc="$(apk info --installed -d "$pkg" 2>/dev/null | sed -n '2p')"
+        elif [ "$pkg_mgr" = "pacman" ]; then
+            desc="$(pacman -Qi "$pkg" 2>/dev/null | sed -n 's/^Description[[:space:]]*:[[:space:]]*//p')"
+        fi
+        
         if [ -n "$desc" ]; then
             ln -snf "$self" "$bindir/$app"
             printf "  %-18s %s\n" "$app" "$desc"
@@ -130,36 +155,36 @@ if [ "$cmd" = "kiosk" ]; then
     exit 0
 fi
 
-crt_state="$HOME/.local/state/idun/crt"
-
-if [ -r "$crt_state" ] && [ "$(cat "$crt_state")" = "1" ]; then
-    export ENABLE_VKBASALT=1
-else
-    export ENABLE_VKBASALT=0
-fi
-
+# crt_state="$HOME/.local/state/idun/crt"
+# if [ -r "$crt_state" ] && [ "$(cat "$crt_state")" = "1" ]; then
+#     export ENABLE_VKBASALT=1
+# else
+#     export ENABLE_VKBASALT=0
+# fi
+xterm_binary=/usr/bin/foot
 target="/usr/bin/$cmd"
 launcher=()
 
 case "$cmd" in
 	xterm)
-		target="/usr/bin/alacritty"
+		target="$xterm_binary"
 		;;
-		
-    vice)
-        export SDL_VIDEO_DRIVER=wayland
-        ;;
 
     thor)
-        target="/usr/bin/alacritty"
+		target="$xterm_binary"
         launcher=(-e /usr/bin/yazi)
         ;;
 
     ocp)
-    	target="/usr/bin/alacritty"
+		target="$xterm_binary"
     	launcher=(-e /usr/bin/ocp)
     	;;
 esac
 
-launch "$@"
+if [ "$target" = "$xterm_binary" ]; then
+    session "$@"
+else
+    spawn "$target" "$@"
+fi
+
 exit 0

@@ -3,13 +3,12 @@
 _base_deps="cage
 syncterm
 opencubicplayer"
-_xterm_deps="alacritty
+_xterm_deps="foot
 font-jetbrains-mono-nerd"
 _thor_deps="yazi
 yazi-cli
 bat
 mediainfo
-ueberzugpp
 poppler-utils
 zathura
 zathura-pdf-poppler

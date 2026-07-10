@@ -1,6 +1,5 @@
 # command[:package]
-xterm:alacritty
-# xterm:rio
+xterm:foot
 thor:yazi
 syncterm
 ocp:opencubicplayer
