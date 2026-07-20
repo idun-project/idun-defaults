@@ -1,4 +1,24 @@
 #!/bin/bash
+
+# ---------------------------------------------------------
+# Global Configuration & Initialization
+# ---------------------------------------------------------
+KIOSK_LIST="/usr/share/idun/kiosk.lst"
+KIOSK_CONFIGS="/usr/share/idun/kiosk_conf.tar.zst"
+BINDIR="$HOME/.local/bin"
+
+# Determine the package manager
+if command -v apk >/dev/null 2>&1; then
+    PKG_MGR="apk"
+elif command -v pacman >/dev/null 2>&1; then
+    PKG_MGR="pacman"
+else
+    PKG_MGR="unknown"
+fi
+
+# ---------------------------------------------------------
+# Helper Functions
+# ---------------------------------------------------------
 spawn() {
     if command -v systemd-run >/dev/null 2>&1; then
         systemd-run --user \
@@ -35,38 +55,88 @@ session() {
     fi
 }
 
+is_installed() {
+    local pkg="$1"
+    if [ "$PKG_MGR" = "apk" ]; then
+        apk info -e "$pkg" >/dev/null 2>&1
+    elif [ "$PKG_MGR" = "pacman" ]; then
+        pacman -Qq "$pkg" >/dev/null 2>&1
+    else
+        return 1
+    fi
+}
+
+# ---------------------------------------------------------
+# Core Kiosk Functions
+# ---------------------------------------------------------
+app() {
+    local pkg="$1"
+    
+    if [ -z "$pkg" ]; then
+        echo "Error: No package name provided."
+        return 1
+    fi
+
+    if [ "$PKG_MGR" = "unknown" ]; then
+        echo "Error: No supported package manager (apk/pacman) found."
+        return 1
+    fi
+
+    # Check and install package
+    if ! is_installed "$pkg"; then
+        echo "Installing $pkg..."
+        if [ "$PKG_MGR" = "apk" ]; then
+            sudo apk add "$pkg"
+        elif [ "$PKG_MGR" = "pacman" ]; then
+            sudo pacman -S --noconfirm "$pkg"
+        fi
+        
+        if [ $? -ne 0 ]; then
+            echo "Error: Failed to install $pkg."
+            return 1
+        fi
+    else
+        echo "Package '$pkg' is already installed."
+    fi
+
+    # Add to kiosk.lst if not already present
+    # We use a regex to ensure we don't partially match another app (e.g., matching "vi" inside "vim")
+    if ! grep -Eq "^[[:space:]]*${pkg}(:|[[:space:]]|$)" "$KIOSK_LIST" 2>/dev/null; then
+        echo "Adding '$pkg' to $KIOSK_LIST..."
+        # Requires sudo as /usr/share/idun is likely root-owned
+        echo "$pkg" | sudo tee -a "$KIOSK_LIST" >/dev/null
+    else
+        echo "Package '$pkg' is already in the kiosk list."
+    fi
+
+    # Run normal install to link and print available apps
+    install
+}
+
 install() {
-    local list="/usr/share/idun/kiosk.lst"
-    local configs="/usr/share/idun/kiosk_conf.tar.zst"
-    local bindir="$HOME/.local/bin"
     local self
     local count=0
 
     self="$(readlink -f "$0")"
-    mkdir -p "$bindir"
+    mkdir -p "$BINDIR"
     declare -A wanted
 
     #
     # Part 1: Synchronize desired links
     #
     while IFS= read -r line; do
-        # Remove trailing comments
         line="${line%%#*}"
-
-        # Trim trailing whitespace
         line="${line%"${line##*[![:space:]]}"}"
-
-        # Skip blanks
         [ -n "$line" ] || continue
 
         app="${line%%:*}"
         wanted["$app"]=1
-    done < "$list"
+    done < "$KIOSK_LIST"
 
     #
     # Part 2: Remove obsolete kiosk-managed links
     #
-    for link in "$bindir"/*; do
+    for link in "$BINDIR"/*; do
         [ -L "$link" ] || continue
 
         target="$(readlink -f "$link")"
@@ -83,25 +153,22 @@ install() {
     #
     if [ "$replace_config" -eq 1 ]; then
         echo "Over-writing configuration for kiosk apps."
-        tar --zstd -xf "$configs" -C ~/.config
+        tar --zstd -xf "$KIOSK_CONFIGS" -C ~/.config
     else
-        tar --skip-old-files --zstd -xf "$configs" -C ~/.config
+        tar --skip-old-files --zstd -xf "$KIOSK_CONFIGS" -C ~/.config
     fi
 
     #
     # Part 4: Display/link available applications
     #
-    printf "\n"
-    printf "Available kiosk applications:\n\n"
+    printf "\nAvailable kiosk applications:\n\n"
+    if [ "$PKG_MGR" = "unknown" ]; then
+        echo "Warning: No supported package manager (apk/pacman) found."
+    fi
+
     while IFS= read -r line; do
-
-        # Remove trailing comments
         line="${line%%#*}"
-
-        # Trim trailing whitespace
         line="${line%"${line##*[![:space:]]}"}"
-
-        # Skip blanks
         [ -n "$line" ] || continue
 
         app="${line%%:*}"
@@ -111,39 +178,38 @@ install() {
             pkg="$app"
         fi
 
-        # Determine the package manager
-        if command -v apk >/dev/null 2>&1; then
-            pkg_mgr="apk"
-        elif command -v pacman >/dev/null 2>&1; then
-            pkg_mgr="pacman"
-        else
-            pkg_mgr="unknown"
-            echo "Warning: No supported package manager (apk/pacman) found."
-        fi
-
         # Fetch description based on the active package manager
         desc=""
-        if [ "$pkg_mgr" = "apk" ]; then
+        if [ "$PKG_MGR" = "apk" ]; then
             desc="$(apk info --installed -d "$pkg" 2>/dev/null | sed -n '2p')"
-        elif [ "$pkg_mgr" = "pacman" ]; then
+        elif [ "$PKG_MGR" = "pacman" ]; then
             desc="$(pacman -Qi "$pkg" 2>/dev/null | sed -n 's/^Description[[:space:]]*:[[:space:]]*//p')"
         fi
         
         if [ -n "$desc" ]; then
-            ln -snf "$self" "$bindir/$app"
+            ln -snf "$self" "$BINDIR/$app"
             printf " %-10s %s\n" "$app" "$desc"
             count=$((count + 1))
         fi
-    done < "$list"
+    done < "$KIOSK_LIST"
 
     printf "\n%d application(s) available.\n" "$count"
 }
 
+# ---------------------------------------------------------
+# Execution Entry Point
+# ---------------------------------------------------------
 cmd="$(basename "$0")"
 if [ "$cmd" = "kiosk" ]; then
     replace_config=0
     
-    # Loop through all arguments passed to the script
+    # Check if the first argument is "app"
+    if [ "$1" = "app" ]; then
+        app "$2"
+        exit 0
+    fi
+
+    # Loop through all arguments passed to the script for standard install behavior
     for arg in "$@"; do
         if [ "$arg" = "--replace-config" ]; then
             replace_config=1
@@ -154,13 +220,6 @@ if [ "$cmd" = "kiosk" ]; then
     install
     exit 0
 fi
-
-# crt_state="$HOME/.local/state/idun/crt"
-# if [ -r "$crt_state" ] && [ "$(cat "$crt_state")" = "1" ]; then
-#     export ENABLE_VKBASALT=1
-# else
-#     export ENABLE_VKBASALT=0
-# fi
 
 # Fix locale setting for utf-8
 export LANG=C.UTF-8
@@ -174,12 +233,10 @@ case "$cmd" in
 	xterm)
 		target="$xterm_binary"
 		;;
-
     thor)
 		target="$xterm_binary"
         launcher=(-e /usr/bin/yazi)
         ;;
-
     ocp)
 		target="$xterm_binary"
     	launcher=(-e /usr/bin/ocp)
