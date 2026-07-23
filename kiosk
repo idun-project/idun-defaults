@@ -47,6 +47,9 @@ display() {
 }
 
 session() {
+    # Fix needed for Qt5 programs like cool-retro-term
+    export QT_QPA_PLATFORM=wayland
+
     if display; then
         spawn "$target" "${launcher[@]}" "$@"
     else
