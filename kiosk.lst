@@ -1,6 +1,6 @@
 # command[:package]
 xterm:foot
-thor:yazi
+!thor:yazi
 syncterm
-ocp:opencubicplayer
+!ocp:opencubicplayer
 vice:idun-vice

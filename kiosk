@@ -73,9 +73,9 @@ is_installed() {
 # Core Kiosk Functions
 # ---------------------------------------------------------
 app() {
-    local pkg="$1"
+    local raw_pkg="$1"
     
-    if [ -z "$pkg" ]; then
+    if [ -z "$raw_pkg" ]; then
         echo "Error: No package name provided."
         return 1
     fi
@@ -84,6 +84,9 @@ app() {
         echo "Error: No supported package manager (apk/pacman) found."
         return 1
     fi
+
+    # Strip the optional "!" prefix if it was passed so the package manager handles it properly
+    local pkg="${raw_pkg#!}"
 
     # Check and install package
     if ! is_installed "$pkg"; then
@@ -103,16 +106,39 @@ app() {
     fi
 
     # Add to kiosk.lst if not already present
-    # We use a regex to ensure we don't partially match another app (e.g., matching "vi" inside "vim")
-    if ! grep -Eq "^[[:space:]]*${pkg}(:|[[:space:]]|$)" "$KIOSK_LIST" 2>/dev/null; then
-        echo "Adding '$pkg' to $KIOSK_LIST..."
+    # We use a regex to ensure we don't partially match another app
+    if ! grep -Eq "^[[:space:]]*!?${pkg}(:|[[:space:]]|$)" "$KIOSK_LIST" 2>/dev/null; then
+        echo "Adding '$raw_pkg' to $KIOSK_LIST..."
         # Requires sudo as /usr/share/idun is likely root-owned
-        echo "$pkg" | sudo tee -a "$KIOSK_LIST" >/dev/null
+        echo "$raw_pkg" | sudo tee -a "$KIOSK_LIST" >/dev/null
     else
         echo "Package '$pkg' is already in the kiosk list."
     fi
 
     # Run normal install to link and print available apps
+    install
+}
+
+remove() {
+    local raw_app="$1"
+    
+    if [ -z "$raw_app" ]; then
+        echo "Error: No package name provided to remove."
+        return 1
+    fi
+
+    # Strip the TUI indicator if accidentally provided
+    local app="${raw_app#!}"
+
+    if grep -Eq "^[[:space:]]*!?${app}(:|[[:space:]]|$)" "$KIOSK_LIST" 2>/dev/null; then
+        echo "Removing '$app' from $KIOSK_LIST..."
+        # Safely delete the line whether it has a ! prefix or not
+        sudo sed -i "/^[[:space:]]*${app}\(:\|$\|[[:space:]]\)/d; /^[[:space:]]*!${app}\(:\|$\|[[:space:]]\)/d" "$KIOSK_LIST"
+    else
+        echo "Package '$app' is not found in the kiosk list."
+    fi
+
+    # Refresh symlinks and display list
     install
 }
 
@@ -129,10 +155,12 @@ install() {
     #
     while IFS= read -r line; do
         line="${line%%#*}"
-        line="${line%"${line##*[![:space:]]}"}"
+        line="${line%"${line##*[![:space:]]}"}" # Trim trailing space
+        line="${line#"${line%%[![:space:]]*}"}" # Trim leading space
         [ -n "$line" ] || continue
 
-        app="${line%%:*}"
+        local clean_line="${line#!}"
+        app="${clean_line%%:*}"
         wanted["$app"]=1
     done < "$KIOSK_LIST"
 
@@ -172,11 +200,13 @@ install() {
     while IFS= read -r line; do
         line="${line%%#*}"
         line="${line%"${line##*[![:space:]]}"}"
+        line="${line#"${line%%[![:space:]]*}"}"
         [ -n "$line" ] || continue
 
-        app="${line%%:*}"
-        if [[ "$line" == *:* ]]; then
-            pkg="${line#*:}"
+        local clean_line="${line#!}"
+        app="${clean_line%%:*}"
+        if [[ "$clean_line" == *:* ]]; then
+            pkg="${clean_line#*:}"
         else
             pkg="$app"
         fi
@@ -206,9 +236,17 @@ cmd="$(basename "$0")"
 if [ "$cmd" = "kiosk" ]; then
     replace_config=0
     
-    # Check if the first argument is "app"
+    # Sub-command routing
     if [ "$1" = "app" ]; then
-        app "$2"
+        # Check if they request xterm wrapper behavior via sub-command syntax
+        if [ "$2" = "xterm" ] && [ -n "$3" ]; then
+            app "!$3"
+        else
+            app "$2"
+        fi
+        exit 0
+    elif [ "$1" = "remove" ]; then
+        remove "$2"
         exit 0
     fi
 
@@ -232,19 +270,41 @@ xterm_binary=/usr/bin/foot
 target="/usr/bin/$cmd"
 launcher=()
 
-case "$cmd" in
-	xterm)
-		target="$xterm_binary"
-		;;
-    thor)
-		target="$xterm_binary"
-        launcher=(-e /usr/bin/yazi)
-        ;;
-    ocp)
-		target="$xterm_binary"
-    	launcher=(-e /usr/bin/ocp)
-    	;;
-esac
+# Extract the matching line from kiosk.lst to resolve aliases (e.g. thor:yazi)
+line=$(grep -E "^[[:space:]]*!?${cmd}(:|[[:space:]]|$)" "$KIOSK_LIST" 2>/dev/null | head -n 1)
+
+if [ -n "$line" ]; then
+    # Strip comments and trailing whitespace
+    line="${line%%#*}"
+    line="${line%"${line##*[![:space:]]}"}"
+
+    # Determine if it requires a terminal wrapper
+    is_tui=0
+    if [[ "$line" == [[:space:]]*\!* ]] || [[ "$line" == \!* ]]; then
+        is_tui=1
+    fi
+
+    # Strip the TUI indicator and leading whitespace to parse the alias
+    clean_line="${line#!}"
+    clean_line="${clean_line#"${clean_line%%[![:space:]]*}"}"
+
+    # Extract the underlying binary if an alias exists
+    if [[ "$clean_line" == *:* ]]; then
+        real_bin="${clean_line#*:}"
+    else
+        real_bin="$cmd"
+    fi
+
+    # Assign target and launcher
+    if [ "$is_tui" -eq 1 ]; then
+        target="$xterm_binary"
+        launcher=(-e "/usr/bin/$real_bin")
+    else
+        target="/usr/bin/$real_bin"
+    fi
+elif [ "$cmd" = "xterm" ]; then
+    target="$xterm_binary"
+fi
 
 session "$@"
 exit 0
