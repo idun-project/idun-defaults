@@ -1,6 +1,10 @@
-# command[:package]
-xterm:foot
-!thor:yazi
+# [!]app[->command][:package]
+# The "!" prefix means TUI app; so runs inside xterm instance.
+# If command is omitted, then it matches the app.
+# If package is omitted than it matches the command.
+# All commands are assumed to be in /usr/bin/.
+xterm->foot
+!thor->yazi
 syncterm
 !ocp:opencubicplayer
 vice:idun-vice
