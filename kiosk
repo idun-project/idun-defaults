@@ -315,8 +315,15 @@ fi
 if [ -n "$matched_line" ]; then
     parse_kiosk_line "$matched_line"
     if [ "$tui" -eq 1 ]; then
-        target="$xterm_binary"
-        launcher=(-e "/usr/bin/$cmd_name")
+        # Check if we are already in a capable terminal (e.g., via SSH or a local terminal)
+        if [[ "$TERM" == *"256color"* || "$TERM" == *"kitty"* || "$TERM" == "foot"* || "$TERM" == *"alacritty"* || "$TERM" == *"wezterm"* || "$TERM" == *"ghostty"* ]]; then
+            # Take over the current capable terminal session
+            exec /usr/bin/"$cmd_name" "$@"
+        else
+            # Fallback to wrapping the TUI in the Wayland kiosk xterm
+            target="$xterm_binary"
+            launcher=(-e "/usr/bin/$cmd_name")
+        fi
     else
         target="/usr/bin/$cmd_name"
     fi
@@ -324,5 +331,6 @@ elif [ "$cmd" = "xterm" ]; then
     target="$xterm_binary"
 fi
 
+# The script only reaches here if 'exec' was not called above
 session "$@"
 exit 0

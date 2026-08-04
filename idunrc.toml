@@ -91,9 +91,8 @@ devices = [
 # Settings for Idun I/O connection
 #
 # There are two possibilities for the I/O:
-# 1. Normal mode- serial device is used to transfer I/O data
-#	 between the Commodore and the idunio service running locally on
-#	 the Respberry Pi.
+# 1. Normal mode- I/O data between the Commodore and the idun service
+#	 running locally on the Raspberry Pi.
 # 2. Development mode- I/O is between a Vice emulator running on the 
 #	 RPi or a networked computer, connected to 'socket'. The Idun
 #	 kernel and applications run as normal in the emulator.
