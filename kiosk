@@ -267,7 +267,7 @@ if [ "$cmd" = "kiosk" ]; then
     replace_config=0
     
     # Sub-command routing
-    if [ "$1" = "app" ]; then
+    if [ "$1" = "app" ] || [ "$1" = "add" ]; then
         if [ "$2" = "xterm" ] && [ -n "$3" ]; then
             app "!$3"
         else
