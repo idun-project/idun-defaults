@@ -2,7 +2,9 @@
 # Define the kiosk apps and their dependencies
 _base_deps="cage
 syncterm
-opencubicplayer"
+opencubicplayer
+rap
+rapper"
 _xterm_deps="foot
 font-jetbrains-mono-nerd"
 _thor_deps="yazi
@@ -15,7 +17,7 @@ zathura-pdf-poppler
 7zip"
 
 pkgname=idun-defaults
-pkgver=1.7
+pkgver=1.8
 pkgrel=0
 pkgdesc="Idun default configuration files"
 url="https://github.com/idun-project/idun-defaults"
@@ -82,5 +84,5 @@ package() {
 		"$pkgdir/usr/share/idun/kiosk_conf.tar.zst"
 }
 sha512sums="
-765e077a117b53ee0a6ba3a7bde075072c84502fb2df614ee986aedee2f8dbf51a78aed1a6035f7f8319e8da01e1bfcd8a14863ad59ca1bbcd87dcb372aafe60  idun-defaults-1.7.tar.gz
+dc6938746907f133a8994ae96a898ce8a993fac2c89565b2255ca1a4c3204036299a5756dfc675dde4a80307acd6865fd38531ae64ea774cd2d9128305c8ad28  idun-defaults-1.8.tar.gz
 "
