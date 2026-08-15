@@ -165,16 +165,18 @@ impl C64Ultimate {
 
         let payload = std::str::from_utf8(&buf[..len]).ok()?;
 
-        // Match:
-        // "*** C64 Ultimate (V1.47) 3.14 ***"
-        let matches = payload
-            .split("C64 Ultimate")
-            .nth(1)
-            .and_then(|s| s.split(')').nth(1))
-            .map(|s| s.trim_start())
-            .and_then(|s| s.split_whitespace().next())
-            .filter(|v| v.chars().all(|c| c.is_ascii_digit() || c == '.'));
-
+        let matches = ["C64 Ultimate", "Ultimate 64"]
+        .iter()
+        .find_map(|prefix| {
+            payload
+                .split(prefix)
+                .nth(1)
+                .and_then(|s| s.split(')').nth(1))
+                .map(|s| s.trim_start())
+                .and_then(|s| s.split_whitespace().next())
+                .filter(|v| v.chars().all(|c| c.is_ascii_digit() || c == '.'))
+        });
+        
         if matches.is_some() {
             Some(src.ip().to_string())
         } else {
