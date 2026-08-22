@@ -18,7 +18,7 @@ zathura-pdf-poppler
 
 pkgname=idun-defaults
 pkgver=1.9
-pkgrel=0
+pkgrel=1
 pkgdesc="Idun default configuration files"
 url="https://github.com/idun-project/idun-defaults"
 arch="aarch64"
@@ -84,5 +84,5 @@ package() {
 		"$pkgdir/usr/share/idun/kiosk_conf.tar.zst"
 }
 sha512sums="
-6c34bfa9752f95829d3f833b7fc63854e18b3097328ff36e049068350f2c2ef5259c4b351f1e6b375f98caa52b0bdedc4a12c2f9c414cabb4fda1d71c925eebf  idun-defaults-1.9.tar.gz
+de486f8e82868594d1680e6ede184d43f4b6dfabb2502a3bdcd5ffb0e3d0fc054c70ebb767961a969bcca41342d8c4f6eaf8b8143ea2eaf379ef4083a945c722  idun-defaults-1.9.tar.gz
 "
