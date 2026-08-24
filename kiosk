@@ -251,7 +251,9 @@ install() {
         
         if [ -n "$desc" ]; then
             ln -snf "$self" "$BINDIR/$link"
-            printf " %-10s %s\n" "$link" "$desc"
+            # Wrap at 68 chars on word boundaries, indenting subsequent lines by 12
+            formatted_desc=$(printf "%s\n" "$desc" | fold -s -w 68 | sed '2,$s/^/            /')
+            printf " %-10s %s\n" "$link" "$formatted_desc"
             count=$((count + 1))
         fi
     done < "$KIOSK_LIST"
@@ -267,9 +269,27 @@ if [ "$cmd" = "kiosk" ]; then
     replace_config=0
     
     # Sub-command routing
-    if [ "$1" = "app" ] || [ "$1" = "add" ]; then
+    if [ "$1" = "help" ] || [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
+        echo "Usage: kiosk [SUB-COMMAND] [OPTIONS]"
+        echo ""
+        echo "Sub-commands:"
+        echo "  add/app <package>          Install and add a standard package to the kiosk"
+        echo "  add xterm <app>            Add a TUI application"
+        echo "  add <package> cmd <app>    Add a package with a specific executable"
+        echo "  add <package> alias <app>  Create an alias name for a command/package"
+        echo "  remove <app>               Remove an application link from the kiosk list"
+        echo "  help                       Show this help message"
+        echo ""
+        echo "Options:"
+        echo "  --replace-config           Overwrite configuration files for kiosk apps"
+        exit 0
+    elif [ "$1" = "app" ] || [ "$1" = "add" ]; then
         if [ "$2" = "xterm" ] && [ -n "$3" ]; then
             app "!$3"
+        elif [ "$3" = "cmd" ] && [ -n "$4" ]; then
+            app "$4:$2"
+        elif [ "$3" = "alias" ] && [ -n "$4" ]; then
+            app "$4->$2"
         else
             app "$2"
         fi
