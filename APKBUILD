@@ -11,14 +11,15 @@ _thor_deps="yazi
 yazi-cli
 bat
 mediainfo
+chafa
 poppler-utils
 zathura
 zathura-pdf-poppler
 7zip"
 
 pkgname=idun-defaults
-pkgver=1.9
-pkgrel=1
+pkgver=1.10
+pkgrel=0
 pkgdesc="Idun default configuration files"
 url="https://github.com/idun-project/idun-defaults"
 arch="aarch64"
