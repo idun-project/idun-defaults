@@ -19,7 +19,7 @@ zathura-pdf-poppler
 
 pkgname=idun-defaults
 pkgver=1.10
-pkgrel=0
+pkgrel=1
 pkgdesc="Idun default configuration files"
 url="https://github.com/idun-project/idun-defaults"
 arch="aarch64"
@@ -78,9 +78,6 @@ package() {
 	install -Dm755 "$builddir/resizesd.rc" \
 		"$pkgdir/etc/init.d/resizesd"
 	# Kiosk
-	install -Dm644 "$builddir/kiosk.lst" \
-		"$pkgdir/usr/share/idun/kiosk.lst"
-
 	install -Dm644 "$builddir/kiosk_conf.tar.zst" \
 		"$pkgdir/usr/share/idun/kiosk_conf.tar.zst"
 }

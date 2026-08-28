@@ -19,6 +19,25 @@ fi
 # ---------------------------------------------------------
 # Helper Functions
 # ---------------------------------------------------------
+ensure_kiosk_list() {
+    [ -f "$KIOSK_LIST" ] && return 0
+
+    echo "Initializing $KIOSK_LIST with default entries..."
+    sudo mkdir -p "$(dirname "$KIOSK_LIST")"
+    cat << 'EOF' | sudo tee "$KIOSK_LIST" >/dev/null
+# [!]app[->command][:package]
+# The "!" prefix means TUI app; so runs inside xterm instance.
+# If command is omitted, then it matches the app.
+# If package is omitted than it matches the command.
+# All commands are assumed to be in /usr/bin/.
+xterm->foot
+!thor->yazi
+syncterm
+!ocp:opencubicplayer
+vice:idun-vice
+EOF
+}
+
 # Helper to parse [!]link[->command][:package] lines according to defaults:
 # - link: Primary alias name (created in BINDIR)
 # - command: Executable binary in /usr/bin/ (defaults to link if absent)
@@ -264,6 +283,8 @@ install() {
 # ---------------------------------------------------------
 # Execution Entry Point
 # ---------------------------------------------------------
+ensure_kiosk_list
+
 cmd="$(basename "$0")"
 if [ "$cmd" = "kiosk" ]; then
     replace_config=0
