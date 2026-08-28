@@ -59,6 +59,8 @@ package() {
 	# Kiosk scripts/assets
 	install -Dm755 "$builddir/kiosk" \
 		"$pkgdir/usr/bin/kiosk"
+	install -Dm644 "$builddir/kiosk_conf.tar.zst" \
+		"$pkgdir/usr/share/idun/kiosk_conf.tar.zst"
 	# Config files
 	install -Dm644 "$builddir/idunrc.toml" \
 		"$pkgdir/usr/share/idun/idunrc.toml"
@@ -77,10 +79,7 @@ package() {
 
 	install -Dm755 "$builddir/resizesd.rc" \
 		"$pkgdir/etc/init.d/resizesd"
-	# Kiosk
-	install -Dm644 "$builddir/kiosk_conf.tar.zst" \
-		"$pkgdir/usr/share/idun/kiosk_conf.tar.zst"
 }
 sha512sums="
-de486f8e82868594d1680e6ede184d43f4b6dfabb2502a3bdcd5ffb0e3d0fc054c70ebb767961a969bcca41342d8c4f6eaf8b8143ea2eaf379ef4083a945c722  idun-defaults-1.9.tar.gz
+34d0e49e7ebe496dae846b1f0727658018279167184760c83fed3aedd0c56958cb9e0e5c09a1c038614b66ff60e03a6369ae696f70b2d37328d5738389ddce23  idun-defaults-1.10.tar.gz
 "
