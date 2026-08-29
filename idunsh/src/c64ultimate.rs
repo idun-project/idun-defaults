@@ -174,7 +174,7 @@ impl C64Ultimate {
                 .and_then(|s| s.split(')').nth(1))
                 .map(|s| s.trim_start())
                 .and_then(|s| s.split_whitespace().next())
-                .filter(|v| v.chars().all(|c| c.is_ascii_digit() || c == '.'))
+                .filter(|v| v.chars().all(|c| c.is_ascii_alphanumeric() || c == '.'))
         });
         
         if matches.is_some() {
