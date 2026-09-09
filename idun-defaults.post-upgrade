@@ -7,9 +7,10 @@
 # fi
 
 # If there are changes to the config for default kiosk applictions...
-echo "Over-writing configuration for kiosk apps."
-tar --zstd -xf /usr/share/idun/kiosk_conf.tar.zst -C ~/.config
-
+if [ -d /home/idun/.config ]; then
+	echo "Over-writing configuration for kiosk apps."
+	tar --zstd -xf /usr/share/idun/kiosk_conf.tar.zst -C /home/idun/.config
+fi
 # Replacement .bashrc
 if [ -f /home/idun/.bashrc ]; then
     cp /home/idun/.bashrc /home/idun/.bashrc.bak
