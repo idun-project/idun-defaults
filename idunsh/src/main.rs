@@ -22,8 +22,6 @@ use util::PetString;
 mod c64ultimate;
 use c64ultimate::C64Ultimate;
 
-const LUAPORT: &str          = "/tmp/idunmm-lua";
-
 // Supported shell command constants
 const EXEC_CMD: u8      = 0;
 const GO_CMD: u8        = 1;
@@ -119,7 +117,8 @@ fn parse_sys_command(cli: &Cli) -> Syscommand {
 type Result<T> = result::Result<T, failure::Error>;
 
 fn luasend(message: String) -> Result<()> {
-    let mut s = UnixStream::connect(LUAPORT)?;
+    let luaport = format!("{}/lua.sock", env::var("XDG_RUNTIME_DIR").unwrap_or_default());
+    let mut s = UnixStream::connect(luaport)?;
     let mut r: Vec<u8> = Vec::new();
 
     s.write_all(message.as_bytes())?;

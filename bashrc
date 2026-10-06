@@ -82,7 +82,7 @@ PS1="${W}\u ${N} ${G}\W ${N}\$ "
 # ---------------------------------------------------------------------------
 
 _mluasend() {
-    echo "$1" | socat - UNIX-CONNECT:/tmp/idunmm-lua
+    echo "$1" | socat - UNIX-CONNECT:"$XDG_RUNTIME_DIR/lua.sock"
 }
 # Alias for system reboot
 alias reboot='_mluasend "sys.reboot(0)"'
